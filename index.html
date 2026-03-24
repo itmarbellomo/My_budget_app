@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
@@ -44,7 +43,6 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .header { padding: 56px 24px 20px; }
 .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .app-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
-.month-label { font-family: var(--mono); font-size: 11px; color: var(--dim); }
 
 /* SURVIVAL BANNER */
 .survival { margin: 16px 24px 24px; background: var(--danger-dim); border: 1px solid var(--danger); border-radius: var(--radius); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; transition: all 0.4s; opacity: 0.85; }
@@ -106,7 +104,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .nav-btn { flex: 1; background: none; border: none; color: var(--dim); font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 4px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .nav-btn svg { width: 18px; height: 18px; stroke-width: 1.5; }
 .nav-btn.active { color: var(--accent-text); }
-.nav-btn.add-btn { background: var(--accent-text); color: var(--bg); border-radius: 50px; flex: 0 0 52px; height: 42px; font-size: 22px; flex-direction: row; padding: 0; }
+.nav-btn.add-btn { background: var(--accent-text); color: var(--bg); border-radius: 50px; flex: 0 0 52px; height: 42px; font-size: 22px; flex-direction: row; justify-content: center; padding: 0; }
 @media (prefers-color-scheme: dark) { .nav-btn.add-btn { color: #0f0f0f; } }
 .nav-btn.add-btn:active { transform: scale(0.95); }
 
@@ -244,17 +242,22 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 <div id="dashboard-page" class="page">
   <div class="header">
     <div class="header-top">
-      <div class="app-title">Budget</div>
+      <div class="app-title">Dashboard</div>
       <div style="display:flex;align-items:center;gap:8px;">
+        <select id="dashboard-timeframe" class="form-select" style="width: auto; padding: 4px 12px; font-size: 11px; height: 32px; border-radius: 50px;" onchange="renderDashboard()">
+          <option value="1">This Month</option>
+          <option value="3">Last 3 Months</option>
+          <option value="6">Last 6 Months</option>
+          <option value="all">All Time</option>
+        </select>
         <span class="sync-dot" id="sync-dot"></span>
         <div id="user-pill"></div>
-        <span class="month-label" id="month-label"></span>
       </div>
     </div>
   </div>
   <div class="survival" id="survival-banner">
     <div>
-      <div class="survival-label" id="survival-label">Savings runway</div>
+      <div class="survival-label" id="survival-label">Time until broke</div>
       <div class="survival-sub" id="survival-sub">At current burn rate</div>
     </div>
     <div class="survival-days" id="survival-days">–<span>days</span></div>
@@ -262,10 +265,10 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   <div class="metrics">
     <div class="metric"><div class="metric-label">Savings</div><div class="metric-value success" id="m-savings">–</div></div>
     <div class="metric"><div class="metric-label">Spent</div><div class="metric-value danger" id="m-spent">–</div></div>
-    <div class="metric"><div class="metric-label">Left</div><div class="metric-value" id="m-left">–</div></div>
+    <div class="metric"><div class="metric-label">Avg. Monthly</div><div class="metric-value" id="m-avg">–</div></div>
   </div>
   <div class="section">
-    <div class="section-title">This month by category</div>
+    <div class="section-title" id="dash-cat-title">This month by category</div>
     <div class="cat-list" id="cat-list"></div>
   </div>
   <div class="section">
@@ -276,7 +279,21 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 
 <div id="history-page" class="page">
   <div class="header">
-    <div class="header-top"><div class="app-title">All transactions</div></div>
+    <div class="header-top">
+      <div class="app-title">All transactions</div>
+      <select id="history-cat-filter" class="form-select" style="width: auto; padding: 4px 12px; font-size: 11px; height: 32px; border-radius: 50px;" onchange="renderHistory()">
+        <option value="all">All Categories</option>
+        <option value="Food">Food</option>
+        <option value="Rent">Rent</option>
+        <option value="Transport">Transport</option>
+        <option value="Entertainment">Entertainment</option>
+        <option value="Health">Health</option>
+        <option value="Education">Education</option>
+        <option value="Clothing">Clothing</option>
+        <option value="Other">Other</option>
+        <option value="Income">Income</option>
+      </select>
+    </div>
   </div>
   <div class="section">
     <div class="tx-list" id="tx-all-list"></div>
@@ -502,7 +519,6 @@ function today() { return new Date().toISOString().split('T')[0]; }
 function launchApp() {
   showRawPage('dashboard-page');
   document.getElementById('bottom-nav').style.display = 'flex';
-  setMonthLabel();
   renderDashboard();
   renderSettings();
   if (googleUser) renderUserPill();
@@ -852,14 +868,13 @@ function guessCategory(desc) {
 // ══════════════════════════════════════
 // RENDER DASHBOARD
 // ══════════════════════════════════════
-function currentMonthTxs() {
-  const now = new Date();
-  const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  return transactions.filter(t => t.date.startsWith(ym));
-}
-
 function renderDashboard() {
-  const txs = currentMonthTxs();
+  const tf = document.getElementById('dashboard-timeframe')?.value || '1';
+  const now = new Date();
+  let startDate = new Date(now.getFullYear(), now.getMonth() - parseInt(tf) + 1, 1);
+  if (tf === 'all') startDate = new Date(2000, 0, 1);
+
+  const txs = transactions.filter(t => new Date(t.date) >= startDate);
   const recurring = getRecurring();
   const expenses = transactions.filter(t=>t.type==='expense');
   
@@ -869,19 +884,22 @@ function renderDashboard() {
   
   const savingsLeft = totalSavings - totalSpentEver;
 
-  const txSpent = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  const monthSpent = txSpent + recurringTotal;
-
-  document.getElementById('m-savings').textContent = `₪ ${Math.round(savingsLeft).toLocaleString()}`;
-  document.getElementById('m-spent').textContent = `₪ ${Math.round(monthSpent).toLocaleString()}`;
-  const leftEl = document.getElementById('m-left');
-  leftEl.textContent = `₪ ${Math.round(Math.abs(savingsLeft)).toLocaleString()}`;
-  leftEl.className = `metric-value ${savingsLeft < 0 ? 'danger' : ''}`;
-
+  // Calculate Average Monthly Burn globally for accurate "Time until broke" 
   const uniqueMonths = new Set(expenses.map(t => t.date.substring(0, 7)));
   const monthsCount = Math.max(1, uniqueMonths.size);
   const avgMonthlyBurn = (totalSpentEver / monthsCount) + recurringTotal;
   const monthsUntilBroke = avgMonthlyBurn > 0 ? (savingsLeft / avgMonthlyBurn) : 999;
+
+  // Calculate stats specifically for the selected timeframe
+  const uniqueFilteredMonths = new Set(txs.map(t => t.date.substring(0, 7))).size;
+  const monthsInRange = Math.max(1, tf === 'all' ? uniqueFilteredMonths : parseInt(tf));
+
+  const txSpent = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const periodSpent = txSpent + (recurringTotal * monthsInRange);
+
+  document.getElementById('m-savings').textContent = `₪ ${Math.round(savingsLeft).toLocaleString()}`;
+  document.getElementById('m-spent').textContent = `₪ ${Math.round(periodSpent).toLocaleString()}`;
+  document.getElementById('m-avg').textContent = `₪ ${Math.round(avgMonthlyBurn).toLocaleString()}`;
 
   const banner = document.getElementById('survival-banner');
   const daysEl = document.getElementById('survival-days');
@@ -890,36 +908,50 @@ function renderDashboard() {
     banner.className = 'survival'; document.getElementById('survival-label').textContent = 'Savings depleted';
     document.getElementById('survival-sub').textContent = "You've spent all your savings"; daysEl.innerHTML = `0<span>days</span>`;
   } else if (monthsUntilBroke > 12) {
-    banner.className = 'survival safe'; document.getElementById('survival-label').textContent = 'Savings runway';
+    banner.className = 'survival safe'; document.getElementById('survival-label').textContent = 'Time until broke';
     document.getElementById('survival-sub').textContent = 'Based on avg monthly spend'; daysEl.innerHTML = `${Math.round(monthsUntilBroke)}<span>mo</span>`;
   } else if (monthsUntilBroke > 2) {
-    banner.className = 'survival warn'; document.getElementById('survival-label').textContent = 'Savings runway';
+    banner.className = 'survival warn'; document.getElementById('survival-label').textContent = 'Time until broke';
     document.getElementById('survival-sub').textContent = 'Running lower than ideal'; daysEl.innerHTML = `${Math.round(monthsUntilBroke)}<span>mo</span>`;
   } else {
-    banner.className = 'survival'; document.getElementById('survival-label').textContent = 'Low savings';
+    banner.className = 'survival'; document.getElementById('survival-label').textContent = 'Time until broke';
     document.getElementById('survival-sub').textContent = 'Based on avg monthly spend'; daysEl.innerHTML = `${Math.round(monthsUntilBroke * 30)}<span>days</span>`;
   }
 
+  document.getElementById('dash-cat-title').textContent = tf === '1' ? 'This month by category' : 'Period breakdown';
+
   const cats = {};
   txs.filter(t=>t.type==='expense').forEach(t => { cats[t.cat]=(cats[t.cat]||0)+t.amount; });
-  recurring.forEach(r => { cats[r.cat]=(cats[r.cat]||0)+r.amount; });
+  recurring.forEach(r => { cats[r.cat]=(cats[r.cat]||0) + (r.amount * monthsInRange); });
   const sorted = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+
   document.getElementById('cat-list').innerHTML = sorted.length === 0
-    ? '<div class="empty">No expenses this month</div>'
+    ? '<div class="empty">No expenses for this period</div>'
     : sorted.map(([cat,amt]) => {
-        const pct = monthSpent > 0 ? Math.round(amt/monthSpent*100) : 0;
+        const pct = periodSpent > 0 ? Math.round(amt/periodSpent*100) : 0;
         return `<div><div class="cat-row"><span class="cat-name">${cat}</span><span class="cat-amount">₪ ${amt.toFixed(2)} · ${pct}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${CAT_COLORS[cat]||'#888'}"></div></div></div>`;
       }).join('');
 
   const recurringAsTx = recurring.map(r => ({...r, date:'monthly', type:'expense', recurring:true}));
-  renderTxList(document.getElementById('tx-list'), [...recurringAsTx, ...transactions.slice(0,5)]);
+  renderTxList(document.getElementById('tx-list'), [...recurringAsTx, ...txs.slice(0,5)]);
 }
 
 // ══════════════════════════════════════
 // RENDER HISTORY
 // ══════════════════════════════════════
 function renderHistory() {
-  renderTxList(document.getElementById('tx-all-list'), transactions);
+  const catFilter = document.getElementById('history-cat-filter')?.value || 'all';
+  let filteredTxs = transactions;
+
+  if (catFilter !== 'all') {
+    if (catFilter === 'Income') {
+      filteredTxs = transactions.filter(t => t.type === 'income');
+    } else {
+      filteredTxs = transactions.filter(t => t.cat === catFilter && t.type === 'expense');
+    }
+  }
+
+  renderTxList(document.getElementById('tx-all-list'), filteredTxs);
 }
 
 function renderTxList(el, txs) {
@@ -1115,11 +1147,6 @@ function showPage(page) {
     const btn = document.getElementById(`nav-${id}`); if (btn) btn.classList.toggle('active', map[id]===page);
   });
   if (page==='history') renderHistory(); if (page==='stats') renderStats(); if (page==='settings') renderSettings();
-}
-
-function setMonthLabel() {
-  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  document.getElementById('month-label').textContent = `${months[new Date().getMonth()]} ${new Date().getFullYear()}`;
 }
 
 function setSyncStatus(s) {
