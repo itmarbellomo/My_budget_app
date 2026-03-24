@@ -282,12 +282,20 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 
 <div id="stats-page" class="page">
   <div class="header">
-    <div class="header-top"><div class="app-title">Statistics</div></div>
+    <div class="header-top">
+      <div class="app-title">Statistics</div>
+      <select id="stats-timeframe" class="form-select" style="width: auto; padding: 4px 12px; font-size: 11px; height: 32px; border-radius: 50px;" onchange="renderStats()">
+        <option value="1">This Month</option>
+        <option value="3">Last 3 Months</option>
+        <option value="6">Last 6 Months</option>
+        <option value="all" selected>All Time</option>
+      </select>
+    </div>
   </div>
   <div class="section">
     <div class="chart-card" id="stats-summary"></div>
 
-    <div class="chart-card">
+    <div class="chart-card" id="chart-line-card">
       <div class="chart-title">Spending over time (this month)</div>
       <canvas id="chart-line" height="180"></canvas>
     </div>
@@ -764,84 +772,110 @@ function guessCategory(desc) {
   if (/עירית|חשמל|מים|ארנונה/i.test(desc)) return 'Rent';
   return 'Other'; 
 }
+// ══════════════════════════════════════
+// RENDER STATS (Adds Timeframe Filter)
+// ══════════════════════════════════════
+function renderStats() {
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+  const textColor = isDark ? '#888' : '#aaa';
+  Chart.defaults.color = textColor;
 
-// ══════════════════════════════════════
-// RENDER DASHBOARD
-// ══════════════════════════════════════
-function currentMonthTxs() {
+  // Get selected timeframe
+  const tf = document.getElementById('stats-timeframe')?.value || 'all';
   const now = new Date();
-  const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  return transactions.filter(t => t.date.startsWith(ym));
-}
+  let startDate = new Date(now.getFullYear(), now.getMonth() - parseInt(tf) + 1, 1);
+  if (tf === 'all') startDate = new Date(2000, 0, 1);
 
-function renderDashboard() {
-  const txs = currentMonthTxs();
+  // Filter transactions
+  const txs = transactions.filter(t => new Date(t.date) >= startDate);
+  
   const recurring = getRecurring();
-  const totalSavings = getTotalSavings();
-  const totalSpentEver = transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0)
-    + recurring.reduce((s,r)=>s+r.amount,0); // recurring this month
-  const savingsLeft = totalSavings - transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const recurringTotal = recurring.reduce((s,r)=>s+r.amount,0);
+  
+  const uniqueFilteredMonths = new Set(txs.map(t => t.date.substring(0, 7))).size;
+  const monthsInRange = Math.max(1, tf === 'all' ? uniqueFilteredMonths : parseInt(tf));
+  const totalRecurringInRange = recurringTotal * monthsInRange;
 
-  const txSpent = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  const recurringSpent = recurring.reduce((s,r)=>s+r.amount,0);
-  const monthSpent = txSpent + recurringSpent;
+  const rangeSpent = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0) + totalRecurringInRange;
+  const savingsLeft = getTotalSavings() - transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  
+  // Summary stats
+  document.getElementById('stats-summary').innerHTML = `
+    <div class="chart-title">${tf === '1' ? 'This month' : 'Selected period'} at a glance</div>
+    <div class="stat-row"><span class="stat-label">Total spent</span><span class="stat-val" style="color:var(--danger)">₪ ${Math.round(rangeSpent).toLocaleString()}</span></div>
+    <div class="stat-row"><span class="stat-label">Average monthly</span><span class="stat-val">₪ ${Math.round(rangeSpent / monthsInRange).toLocaleString()}</span></div>
+    <div class="stat-row"><span class="stat-label">Savings remaining</span><span class="stat-val" style="color:var(--success)">₪ ${Math.round(savingsLeft).toLocaleString()}</span></div>
+    <div class="stat-row"><span class="stat-label">Largest expense</span><span class="stat-val">${largestExpense(txs)}</span></div>
+  `;
 
-  document.getElementById('m-savings').textContent = `₪ ${Math.round(savingsLeft).toLocaleString()}`;
-  document.getElementById('m-spent').textContent = `₪ ${Math.round(monthSpent).toLocaleString()}`;
-  const leftEl = document.getElementById('m-left');
-  const left = totalSavings - transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  leftEl.textContent = `₪ ${Math.round(Math.abs(left)).toLocaleString()}`;
-  leftEl.className = `metric-value ${left < 0 ? 'danger' : ''}`;
+  // Line chart — only show if "This Month" is selected
+  const lineCard = document.getElementById('chart-line-card');
+  if (tf === '1') {
+    lineCard.style.display = 'block';
+    const dayOfMonth = now.getDate();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const dayLabels = Array.from({length: dayOfMonth}, (_,i) => i+1);
+    const cumulative = [];
+    let running = recurringTotal; 
+    for (let d = 1; d <= dayOfMonth; d++) {
+      const dayStr = `${ym}-${String(d).padStart(2,'0')}`;
+      const daySpend = txs.filter(t=>t.type==='expense' && t.date===dayStr).reduce((s,t)=>s+t.amount,0);
+      running += daySpend;
+      cumulative.push(Math.round(running));
+    }
 
-  // Survival — based on total savings left and daily burn rate
-  const now = new Date();
-  const dayOfMonth = now.getDate();
-  const allTimeSpent = transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  // Use 30-day rolling average for daily burn
-  const thirtyDaysAgo = new Date(now - 30*24*60*60*1000).toISOString().split('T')[0];
-  const recentSpent = transactions.filter(t=>t.type==='expense' && t.date >= thirtyDaysAgo).reduce((s,t)=>s+t.amount,0);
-  const dailyBurn = recentSpent / 30;
-  const daysUntilBroke = dailyBurn > 0 ? Math.floor(savingsLeft / dailyBurn) : 999;
-
-  const banner = document.getElementById('survival-banner');
-  const daysEl = document.getElementById('survival-days');
-
-  if (savingsLeft <= 0) {
-    banner.className = 'survival';
-    document.getElementById('survival-label').textContent = 'Savings depleted';
-    document.getElementById('survival-sub').textContent = "You've spent all your savings";
-    daysEl.innerHTML = `0<span>days</span>`;
-  } else if (daysUntilBroke > 365) {
-    banner.className = 'survival safe';
-    document.getElementById('survival-label').textContent = 'Savings runway';
-    document.getElementById('survival-sub').textContent = 'At current burn rate';
-    daysEl.innerHTML = `${Math.round(daysUntilBroke/30)}<span>mo</span>`;
-  } else if (daysUntilBroke > 60) {
-    banner.className = 'survival warn';
-    document.getElementById('survival-label').textContent = 'Savings runway';
-    document.getElementById('survival-sub').textContent = 'Running lower than ideal';
-    daysEl.innerHTML = `${daysUntilBroke}<span>days</span>`;
+    if (chartLine) chartLine.destroy();
+    chartLine = new Chart(document.getElementById('chart-line'), {
+      type: 'line',
+      data: {
+        labels: dayLabels,
+        datasets: [{ data: cumulative, borderColor: '#e74c3c', backgroundColor: 'rgba(231,76,60,0.08)', fill: true, tension: 0.4, pointRadius: 2, borderWidth: 2 }]
+      },
+      options: { plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridColor }, ticks: { maxTicksLimit: 8 } }, y: { grid: { color: gridColor }, ticks: { callback: v => `₪${v.toLocaleString()}` } } } }
+    });
   } else {
-    banner.className = 'survival';
-    document.getElementById('survival-label').textContent = 'Low savings';
-    document.getElementById('survival-sub').textContent = 'At current burn rate';
-    daysEl.innerHTML = `${Math.max(0,daysUntilBroke)}<span>days</span>`;
+    lineCard.style.display = 'none';
   }
 
-  // Category bars
+  // Donut chart — by category for selected period
   const cats = {};
   txs.filter(t=>t.type==='expense').forEach(t => { cats[t.cat]=(cats[t.cat]||0)+t.amount; });
-  recurring.forEach(r => { cats[r.cat]=(cats[r.cat]||0)+r.amount; });
-  const sorted = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
-  document.getElementById('cat-list').innerHTML = sorted.length === 0
-    ? '<div class="empty">No expenses this month</div>'
-    : sorted.map(([cat,amt]) => {
-        const pct = monthSpent > 0 ? Math.round(amt/monthSpent*100) : 0;
-        return `<div><div class="cat-row"><span class="cat-name">${cat}</span><span class="cat-amount">₪ ${Math.round(amt).toLocaleString()} · ${pct}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${CAT_COLORS[cat]||'#888'}"></div></div></div>`;
-      }).join('');
+  recurring.forEach(r => { cats[r.cat]=(cats[r.cat]||0) + (r.amount * monthsInRange); });
+  const catEntries = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
 
-  const recurringAsTx = recurring.map(r => ({...r, date:'monthly', type:'expense', recurring:true}));
-  renderTxList(document.getElementById('tx-list'), [...recurringAsTx, ...transactions.slice(0,5)]);
+  if (chartDonut) chartDonut.destroy();
+  chartDonut = new Chart(document.getElementById('chart-donut'), {
+    type: 'doughnut',
+    data: {
+      labels: catEntries.map(([c])=>c),
+      datasets: [{ data: catEntries.map(([,v])=>Math.round(v)), backgroundColor: catEntries.map(([c])=>CAT_COLORS[c]||'#9e9e9e'), borderWidth: 0, hoverOffset: 6 }]
+    },
+    options: { cutout: '62%', plugins: { legend: { position: 'bottom', labels: { padding: 14, font: { family: "'DM Mono'" }, boxWidth: 12 } } } }
+  });
+
+  // Bar chart — ALWAYS show last 6 months 
+  const months = [];
+  const monthSpends = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const ymKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const label = d.toLocaleString('default', { month: 'short' });
+    const spent = transactions.filter(t=>t.type==='expense' && t.date.startsWith(ymKey)).reduce((s,t)=>s+t.amount,0);
+    months.push(label);
+    monthSpends.push(Math.round(spent + recurringTotal));
+  }
+
+  if (chartBar) chartBar.destroy();
+  chartBar = new Chart(document.getElementById('chart-bar'), {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [{ data: monthSpends, backgroundColor: months.map((_,i) => i === 5 ? '#e74c3c' : (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)')), borderRadius: 6, borderSkipped: false }]
+    },
+    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: gridColor }, ticks: { callback: v => `₪${v.toLocaleString()}` } } } }
+  });
 }
 
 // ══════════════════════════════════════
@@ -865,132 +899,74 @@ function renderTxList(el, txs) {
 }
 
 // ══════════════════════════════════════
-// RENDER STATS
+// RENDER DASHBOARD (Fixes Runway Bug)
 // ══════════════════════════════════════
-function renderStats() {
-  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
-  const textColor = isDark ? '#888' : '#aaa';
-  Chart.defaults.color = textColor;
-
+function renderDashboard() {
   const txs = currentMonthTxs();
   const recurring = getRecurring();
+  const expenses = transactions.filter(t=>t.type==='expense');
+  
+  const totalSavings = getTotalSavings();
+  const totalSpentEver = expenses.reduce((s,t)=>s+t.amount,0);
   const recurringTotal = recurring.reduce((s,r)=>s+r.amount,0);
-  const monthSpent = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0) + recurringTotal;
-  const savingsLeft = getTotalSavings() - transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  const now = new Date();
-  const dayOfMonth = now.getDate();
-  const dailyAvg = dayOfMonth > 0 ? monthSpent / dayOfMonth : 0;
+  
+  const savingsLeft = totalSavings - totalSpentEver;
 
-  // Summary stats
-  document.getElementById('stats-summary').innerHTML = `
-    <div class="chart-title">This month at a glance</div>
-    <div class="stat-row"><span class="stat-label">Total spent this month</span><span class="stat-val" style="color:var(--danger)">₪ ${Math.round(monthSpent).toLocaleString()}</span></div>
-    <div class="stat-row"><span class="stat-label">Daily average burn</span><span class="stat-val">₪ ${Math.round(dailyAvg).toLocaleString()}</span></div>
-    <div class="stat-row"><span class="stat-label">Savings remaining</span><span class="stat-val" style="color:var(--success)">₪ ${Math.round(savingsLeft).toLocaleString()}</span></div>
-    <div class="stat-row"><span class="stat-label">Largest expense</span><span class="stat-val">${largestExpense(txs)}</span></div>
-  `;
+  const txSpent = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const monthSpent = txSpent + recurringTotal;
 
-  // Line chart — cumulative spending this month day by day
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
-  const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const dayLabels = Array.from({length: dayOfMonth}, (_,i) => i+1);
-  const cumulative = [];
-  let running = recurringTotal; // recurring counts from day 1
-  for (let d = 1; d <= dayOfMonth; d++) {
-    const dayStr = `${ym}-${String(d).padStart(2,'0')}`;
-    const daySpend = txs.filter(t=>t.type==='expense' && t.date===dayStr).reduce((s,t)=>s+t.amount,0);
-    running += daySpend;
-    cumulative.push(Math.round(running));
+  document.getElementById('m-savings').textContent = `₪ ${Math.round(savingsLeft).toLocaleString()}`;
+  document.getElementById('m-spent').textContent = `₪ ${Math.round(monthSpent).toLocaleString()}`;
+  const leftEl = document.getElementById('m-left');
+  leftEl.textContent = `₪ ${Math.round(Math.abs(savingsLeft)).toLocaleString()}`;
+  leftEl.className = `metric-value ${savingsLeft < 0 ? 'danger' : ''}`;
+
+  // Survival Calculation Fix: Based on true average monthly spend
+  const uniqueMonths = new Set(expenses.map(t => t.date.substring(0, 7)));
+  const monthsCount = Math.max(1, uniqueMonths.size);
+  const avgMonthlyBurn = (totalSpentEver / monthsCount) + recurringTotal;
+  
+  const monthsUntilBroke = avgMonthlyBurn > 0 ? (savingsLeft / avgMonthlyBurn) : 999;
+
+  const banner = document.getElementById('survival-banner');
+  const daysEl = document.getElementById('survival-days');
+
+  if (savingsLeft <= 0) {
+    banner.className = 'survival';
+    document.getElementById('survival-label').textContent = 'Savings depleted';
+    document.getElementById('survival-sub').textContent = "You've spent all your savings";
+    daysEl.innerHTML = `0<span>days</span>`;
+  } else if (monthsUntilBroke > 12) {
+    banner.className = 'survival safe';
+    document.getElementById('survival-label').textContent = 'Savings runway';
+    document.getElementById('survival-sub').textContent = 'Based on avg monthly spend';
+    daysEl.innerHTML = `${Math.round(monthsUntilBroke)}<span>mo</span>`;
+  } else if (monthsUntilBroke > 2) {
+    banner.className = 'survival warn';
+    document.getElementById('survival-label').textContent = 'Savings runway';
+    document.getElementById('survival-sub').textContent = 'Running lower than ideal';
+    daysEl.innerHTML = `${Math.round(monthsUntilBroke)}<span>mo</span>`;
+  } else {
+    banner.className = 'survival';
+    document.getElementById('survival-label').textContent = 'Low savings';
+    document.getElementById('survival-sub').textContent = 'Based on avg monthly spend';
+    daysEl.innerHTML = `${Math.round(monthsUntilBroke * 30)}<span>days</span>`;
   }
 
-  if (chartLine) chartLine.destroy();
-  chartLine = new Chart(document.getElementById('chart-line'), {
-    type: 'line',
-    data: {
-      labels: dayLabels,
-      datasets: [{
-        data: cumulative,
-        borderColor: '#e74c3c',
-        backgroundColor: 'rgba(231,76,60,0.08)',
-        fill: true,
-        tension: 0.4,
-        pointRadius: 2,
-        borderWidth: 2
-      }]
-    },
-    options: {
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { color: gridColor }, ticks: { maxTicksLimit: 8 } },
-        y: { grid: { color: gridColor }, ticks: { callback: v => `₪${v.toLocaleString()}` } }
-      }
-    }
-  });
-
-  // Donut chart — by category this month
+  // Category bars
   const cats = {};
   txs.filter(t=>t.type==='expense').forEach(t => { cats[t.cat]=(cats[t.cat]||0)+t.amount; });
   recurring.forEach(r => { cats[r.cat]=(cats[r.cat]||0)+r.amount; });
-  const catEntries = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  const sorted = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('cat-list').innerHTML = sorted.length === 0
+    ? '<div class="empty">No expenses this month</div>'
+    : sorted.map(([cat,amt]) => {
+        const pct = monthSpent > 0 ? Math.round(amt/monthSpent*100) : 0;
+        return `<div><div class="cat-row"><span class="cat-name">${cat}</span><span class="cat-amount">₪ ${Math.round(amt).toLocaleString()} · ${pct}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${CAT_COLORS[cat]||'#888'}"></div></div></div>`;
+      }).join('');
 
-  if (chartDonut) chartDonut.destroy();
-  chartDonut = new Chart(document.getElementById('chart-donut'), {
-    type: 'doughnut',
-    data: {
-      labels: catEntries.map(([c])=>c),
-      datasets: [{
-        data: catEntries.map(([,v])=>Math.round(v)),
-        backgroundColor: catEntries.map(([c])=>CAT_COLORS[c]||'#9e9e9e'),
-        borderWidth: 0,
-        hoverOffset: 6
-      }]
-    },
-    options: {
-      cutout: '62%',
-      plugins: { legend: { position: 'bottom', labels: { padding: 14, font: { family: "'DM Mono'" }, boxWidth: 12 } } }
-    }
-  });
-
-  // Bar chart — last 6 months spending
-  const months = [];
-  const monthSpends = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const ymKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    const label = d.toLocaleString('default', { month: 'short' });
-    const spent = transactions.filter(t=>t.type==='expense' && t.date.startsWith(ymKey)).reduce((s,t)=>s+t.amount,0);
-    months.push(label);
-    monthSpends.push(Math.round(spent + recurringTotal));
-  }
-
-  if (chartBar) chartBar.destroy();
-  chartBar = new Chart(document.getElementById('chart-bar'), {
-    type: 'bar',
-    data: {
-      labels: months,
-      datasets: [{
-        data: monthSpends,
-        backgroundColor: months.map((_,i) => i === 5 ? '#e74c3c' : (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)')),
-        borderRadius: 6,
-        borderSkipped: false
-      }]
-    },
-    options: {
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { display: false } },
-        y: { grid: { color: gridColor }, ticks: { callback: v => `₪${v.toLocaleString()}` } }
-      }
-    }
-  });
-}
-
-function largestExpense(txs) {
-  const expenses = txs.filter(t=>t.type==='expense');
-  if (!expenses.length) return '–';
-  const top = expenses.reduce((a,b) => a.amount > b.amount ? a : b);
-  return `${top.desc} (₪${Math.round(top.amount).toLocaleString()})`;
+  const recurringAsTx = recurring.map(r => ({...r, date:'monthly', type:'expense', recurring:true}));
+  renderTxList(document.getElementById('tx-list'), [...recurringAsTx, ...transactions.slice(0,5)]);
 }
 
 // ══════════════════════════════════════
