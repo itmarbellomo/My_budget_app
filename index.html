@@ -111,7 +111,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 /* MODAL */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
 .modal-overlay.open { opacity: 1; pointer-events: all; }
-.modal { width: 100%; max-width: 480px; margin: 0 auto; background: var(--surface); border-radius: 24px 24px 0 0; border-top: 1px solid var(--border2); padding: 20px 24px 48px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); }
+.modal { width: 100%; max-width: 480px; margin: 0 auto; background: var(--surface); border-radius: 24px 24px 0 0; border-top: 1px solid var(--border2); padding: 20px 24px 48px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); max-height: 90vh; overflow-y: auto; }
 .modal-overlay.open .modal { transform: translateY(0); }
 .modal-handle { width: 36px; height: 3px; background: var(--border2); border-radius: 2px; margin: 0 auto 24px; }
 .modal-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 20px; }
@@ -448,20 +448,45 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 <div class="modal-overlay" id="edit-modal-overlay" onclick="closeModalOutside(event, 'edit-modal-overlay')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">Log Bit Refund</div>
-    <p style="font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.5;">Enter the amount a friend sent you for this expense. We will subtract it from the total and log the refund in Google Sheets.</p>
+    <div class="modal-title">Edit Transaction</div>
+
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <input class="form-input" id="edit-desc" type="text" />
+    </div>
     
     <div class="form-group">
-      <label class="form-label">Original Expense Amount (₪)</label>
-      <input class="form-input" id="edit-original" type="text" readonly />
+      <label class="form-label">Category</label>
+      <select class="form-select" id="edit-cat">
+        <option value="Food">Food</option>
+        <option value="Rent">Rent</option>
+        <option value="Transport">Transport</option>
+        <option value="Entertainment">Entertainment</option>
+        <option value="Health">Health</option>
+        <option value="Education">Education</option>
+        <option value="Clothing">Clothing</option>
+        <option value="Other">Other</option>
+        <option value="Income">Income</option>
+      </select>
     </div>
-    <p id="edit-already-received" style="font-size: 11px; color: var(--success); font-family: var(--mono); margin-bottom:10px;"></p>
+
+    <div style="margin: 24px 0; border-top: 1px solid var(--border); padding-top: 24px;">
+      <div class="modal-title" style="margin-bottom: 8px;">Log Bit Refund</div>
+      <p style="font-size: 11px; color: var(--muted); margin-bottom: 16px; line-height: 1.5;">Enter the amount a friend sent you for this expense. We will subtract it from the total.</p>
+      
+      <div class="form-group">
+        <label class="form-label">Original Expense Amount (₪)</label>
+        <input class="form-input" id="edit-original" type="text" readonly />
+      </div>
+      <p id="edit-already-received" style="font-size: 11px; color: var(--success); font-family: var(--mono); margin-bottom:10px;"></p>
+      
+      <div class="form-group">
+        <label class="form-label">New Amount Received (₪)</label>
+        <input class="form-input" id="edit-received" type="number" placeholder="0.00" inputmode="decimal" />
+      </div>
+    </div>
     
-    <div class="form-group">
-      <label class="form-label">New Amount Received (₪)</label>
-      <input class="form-input" id="edit-received" type="number" placeholder="0.00" inputmode="decimal" />
-    </div>
-    <button class="submit-btn" id="submit-edit-btn" onclick="submitEdit()">Update Expense</button>
+    <button class="submit-btn" id="submit-edit-btn" onclick="submitEdit()">Save Changes</button>
   </div>
 </div>
 
@@ -703,9 +728,14 @@ async function submitTransaction() {
 
 function openEditModal(id) {
   const tx = transactions.find(t => t.id === id);
-  if (!tx || tx.recurring) return; // Disallow editing virtual recurring items
+  if (!tx || tx.recurring) return; 
   
   editingTxId = id;
+  
+  // Pre-fill editable fields
+  document.getElementById('edit-desc').value = tx.desc;
+  document.getElementById('edit-cat').value = tx.cat;
+
   const origAmount = tx.original || tx.amount;
   const currentRefund = tx.refund || 0;
   
@@ -721,22 +751,40 @@ function closeEditModal() {
 }
 
 async function submitEdit() {
-  const receivedAmount = parseFloat(document.getElementById('edit-received').value);
-  if (isNaN(receivedAmount) || receivedAmount <= 0) { showToast('Enter valid amount received', 'error'); return; }
-  
   const tx = transactions.find(t => t.id === editingTxId);
   if (!tx) return;
 
+  const newDesc = document.getElementById('edit-desc').value.trim();
+  const newCat = document.getElementById('edit-cat').value;
+  
+  if (!newDesc) { showToast('Description cannot be empty', 'error'); return; }
+
+  const receivedStr = document.getElementById('edit-received').value;
+  const receivedAmount = receivedStr ? parseFloat(receivedStr) : 0;
+  
+  if (receivedStr && (isNaN(receivedAmount) || receivedAmount < 0)) { 
+    showToast('Enter a valid refund amount', 'error'); 
+    return; 
+  }
+
   const btn = document.getElementById('submit-edit-btn');
-  btn.disabled = true; btn.textContent = 'Updating...';
+  btn.disabled = true; btn.textContent = 'Saving...';
 
   try {
-    // If it's the first edit, make sure original amount is saved
-    if (!tx.original) tx.original = tx.amount;
+    // Update core details
+    tx.desc = newDesc;
+    tx.cat = newCat;
     
-    // Increment the refund and calculate the new net amount
-    tx.refund = (tx.refund || 0) + receivedAmount;
-    tx.amount = parseFloat((tx.original - tx.refund).toFixed(2));
+    // Auto adjust type based on category
+    if (newCat === 'Income') tx.type = 'income';
+    else tx.type = 'expense';
+
+    // Process refund logic if the user typed something into the Bit Refund field
+    if (receivedAmount > 0) {
+      if (!tx.original) tx.original = tx.amount;
+      tx.refund = (tx.refund || 0) + receivedAmount;
+      tx.amount = parseFloat((tx.original - tx.refund).toFixed(2));
+    }
     
     localStorage.setItem('budget_txs', JSON.stringify(transactions));
 
@@ -748,11 +796,11 @@ async function submitEdit() {
     if (document.getElementById('history-page').classList.contains('active')) renderHistory();
     if (document.getElementById('stats-page').classList.contains('active')) renderStats();
     
-    showToast('Expense updated successfully ✓', 'success');
+    showToast('Transaction updated ✓', 'success');
   } catch (e) {
     showToast(`Error updating: ${e.message}`, 'error');
   } finally {
-    btn.disabled = false; btn.textContent = 'Update Expense';
+    btn.disabled = false; btn.textContent = 'Save Changes';
   }
 }
 
