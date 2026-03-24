@@ -69,7 +69,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 
 /* SECTION */
 .section { padding: 0 24px 24px; }
-.section-title { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--dim); text-transform: uppercase; margin-bottom: 12px; }
+.section-title { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--dim); text-transform: uppercase; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
 
 /* CATEGORY BARS */
 .cat-list { display: flex; flex-direction: column; gap: 10px; }
@@ -82,6 +82,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 /* TRANSACTIONS */
 .tx-list { display: flex; flex-direction: column; gap: 1px; }
 .tx-item { background: var(--surface); padding: 13px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; transition: background 0.15s; box-shadow: var(--shadow); }
+.tx-item.clickable { cursor: pointer; }
 .tx-item:first-child { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
 .tx-item:last-child { border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
 .tx-item:only-child { border-radius: var(--radius-sm); }
@@ -122,6 +123,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .form-input, .form-select { width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); font-family: var(--mono); font-size: 15px; padding: 12px 14px; outline: none; transition: border-color 0.15s; -webkit-appearance: none; }
 .form-input:focus, .form-select:focus { border-color: var(--accent-text); }
 .form-input::placeholder { color: var(--dim); }
+.form-input[readonly] { opacity: 0.7; cursor: not-allowed; }
 .type-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
 .type-btn { background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 12px; cursor: pointer; transition: all 0.15s; }
 .type-btn.active.expense { background: var(--danger-dim); border-color: var(--danger); color: var(--danger); }
@@ -308,8 +310,21 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
     </div>
 
     <div class="chart-card">
-      <div class="chart-title">Month vs month</div>
-      <canvas id="chart-bar" height="180"></canvas>
+      <div class="chart-title">
+        <span>Month vs month</span>
+        <select id="stats-cat-filter" class="form-select" style="width: auto; padding: 2px 8px; font-size: 10px; height: 24px; border-radius: 4px; margin-left:10px;" onchange="renderStats()">
+          <option value="all">All Categories</option>
+          <option value="Food">Food</option>
+          <option value="Rent">Rent</option>
+          <option value="Transport">Transport</option>
+          <option value="Entertainment">Entertainment</option>
+          <option value="Health">Health</option>
+          <option value="Education">Education</option>
+          <option value="Clothing">Clothing</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <canvas id="chart-bar" height="200"></canvas>
     </div>
   </div>
 </div>
@@ -338,6 +353,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
       <input class="form-input" type="file" id="excel-upload" accept=".xlsx, .xls, .csv" style="padding: 9px; font-size: 13px;" />
     </div>
     <button class="submit-btn" onclick="handleExcelUpload(event)" style="margin-bottom:24px;">Import Transactions</button>
+
     <div class="section-title" style="margin-bottom:12px;">Monthly recurring expenses</div>
     <div id="recurring-list" style="margin-bottom:12px;"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
@@ -379,7 +395,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   </button>
 </nav>
 
-<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event, 'modal-overlay')">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">New transaction</div>
@@ -411,6 +427,24 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   </div>
 </div>
 
+<div class="modal-overlay" id="edit-modal-overlay" onclick="closeModalOutside(event, 'edit-modal-overlay')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Log Bit Refund</div>
+    <p style="font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.5;">Enter the amount a friend sent you for this expense. We will subtract it from the total.</p>
+    
+    <div class="form-group">
+      <label class="form-label">Original Expense Amount (₪)</label>
+      <input class="form-input" id="edit-original" type="text" readonly />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Amount Received (₪)</label>
+      <input class="form-input" id="edit-received" type="number" placeholder="0.00" inputmode="decimal" />
+    </div>
+    <button class="submit-btn" id="submit-edit-btn" onclick="submitEdit()">Update Expense</button>
+  </div>
+</div>
+
 <div class="confirm-overlay" id="confirm-overlay">
   <div class="confirm-box">
     <div class="modal-handle"></div>
@@ -435,10 +469,12 @@ const CAT_COLORS = {
 let config = {}, transactions = [], currentType = 'expense';
 let accessToken = null, tokenExpiry = 0, googleUser = null;
 let chartLine = null, chartDonut = null, chartBar = null;
+let editingTxId = null;
 
 function cfg(k) { return config[k] || ''; }
 function getRecurring() { return config.recurring || []; }
 function getTotalSavings() { return parseFloat(config.savings) || 0; }
+function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
 
 // ══════════════════════════════════════
 // INIT
@@ -451,7 +487,6 @@ function init() {
   const u = localStorage.getItem('budget_user');
   if (u) googleUser = JSON.parse(u);
 
-  // Set today as default date in modal
   document.getElementById('tx-date').value = today();
 
   if (!cfg('sheetId') || !cfg('clientId')) { showRawPage('setup-page'); return; }
@@ -472,7 +507,7 @@ function launchApp() {
 }
 
 // ══════════════════════════════════════
-// SETUP
+// SETUP & GOOGLE AUTH
 // ══════════════════════════════════════
 function saveSetup() {
   const sheetId = document.getElementById('setup-sheet-id').value.trim();
@@ -484,9 +519,6 @@ function saveSetup() {
   showRawPage('signin-page');
 }
 
-// ══════════════════════════════════════
-// GOOGLE AUTH
-// ══════════════════════════════════════
 let tokenClient = null;
 
 function onGoogleLibraryLoad() {
@@ -588,6 +620,7 @@ async function syncFromSheet() {
     await ensureSheet();
     const data = await sheetsReq('GET', `/values/${SHEET}!A:E`);
     transactions = (data.values || []).slice(1).map(r => ({
+      id: generateId(),
       date: r[0]||'', desc: r[1]||'', amount: parseFloat(r[2])||0, cat: r[3]||'Other', type: r[4]||'expense'
     })).filter(t => t.date);
     localStorage.setItem('budget_txs', JSON.stringify(transactions));
@@ -606,8 +639,15 @@ async function appendRow(tx) {
   });
 }
 
+async function rewriteAllRowsToSheet() {
+  // Clears the sheet and rewrites all transactions. This is safest for edits.
+  const values = [['Date','Description','Amount','Category','Type'], ...transactions.map(t => [t.date, t.desc, t.amount, t.cat, t.type])];
+  await sheetsReq('POST', `/values/${SHEET}!A:E:clear`, {});
+  await sheetsReq('PUT', `/values/${SHEET}!A1:E?valueInputOption=RAW`, { values });
+}
+
 // ══════════════════════════════════════
-// ADD TRANSACTION
+// ADD / EDIT TRANSACTIONS
 // ══════════════════════════════════════
 async function submitTransaction() {
   const amount = parseFloat(document.getElementById('tx-amount').value);
@@ -618,7 +658,8 @@ async function submitTransaction() {
   if (!desc) { showToast('Add a description', 'error'); return; }
   const btn = document.getElementById('submit-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
-  const tx = { date, desc, amount, cat, type: currentType };
+  
+  const tx = { id: generateId(), date, desc, amount, cat, type: currentType };
   try {
     await appendRow(tx);
     transactions.unshift(tx);
@@ -631,6 +672,52 @@ async function submitTransaction() {
   } finally { btn.disabled = false; btn.textContent = 'Add transaction'; }
 }
 
+function openEditModal(id) {
+  const tx = transactions.find(t => t.id === id);
+  if (!tx || tx.recurring) return; // Disallow editing virtual recurring items
+  
+  editingTxId = id;
+  document.getElementById('edit-original').value = tx.amount.toFixed(2);
+  document.getElementById('edit-received').value = '';
+  document.getElementById('edit-modal-overlay').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal-overlay').classList.remove('open');
+  editingTxId = null;
+}
+
+async function submitEdit() {
+  const receivedAmount = parseFloat(document.getElementById('edit-received').value);
+  if (isNaN(receivedAmount) || receivedAmount <= 0) { showToast('Enter valid amount received', 'error'); return; }
+  
+  const tx = transactions.find(t => t.id === editingTxId);
+  if (!tx) return;
+
+  const btn = document.getElementById('submit-edit-btn');
+  btn.disabled = true; btn.textContent = 'Updating...';
+
+  try {
+    // Update local data
+    tx.amount = parseFloat((tx.amount - receivedAmount).toFixed(2));
+    localStorage.setItem('budget_txs', JSON.stringify(transactions));
+
+    // Push new full state to google sheets
+    await rewriteAllRowsToSheet();
+    
+    closeEditModal();
+    renderDashboard();
+    if (document.getElementById('history-page').classList.contains('active')) renderHistory();
+    if (document.getElementById('stats-page').classList.contains('active')) renderStats();
+    
+    showToast('Expense updated successfully ✓', 'success');
+  } catch (e) {
+    showToast(`Error updating: ${e.message}`, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Update Expense';
+  }
+}
+
 // ══════════════════════════════════════
 // EXCEL IMPORT LOGIC (SheetJS)
 // ══════════════════════════════════════
@@ -639,8 +726,7 @@ async function handleExcelUpload(event) {
   if (!fileInput.files.length) { showToast('Please select a file', 'error'); return; }
 
   const btn = event.target;
-  btn.disabled = true;
-  btn.textContent = 'Reading Excel...';
+  btn.disabled = true; btn.textContent = 'Reading Excel...';
 
   const file = fileInput.files[0];
   const reader = new FileReader();
@@ -649,45 +735,32 @@ async function handleExcelUpload(event) {
     try {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
-      
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
-      
       const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
       
       const newTxs = parseExcelData(rows);
 
       if (!newTxs.length) {
         showToast('No valid transactions found', 'error');
-        btn.disabled = false; btn.textContent = 'Import Transactions';
-        return;
+        btn.disabled = false; btn.textContent = 'Import Transactions'; return;
       }
 
-      // Filter out transactions we already have
       const toAdd = newTxs.filter(tx => 
         !transactions.some(existing => 
-          existing.date === tx.date && 
-          existing.desc === tx.desc && 
-          Math.abs(existing.amount - tx.amount) < 0.01
+          existing.date === tx.date && existing.desc === tx.desc && Math.abs(existing.amount - tx.amount) < 0.01
         )
       );
 
       if (!toAdd.length) {
         showToast('All transactions already synced', 'success');
-        fileInput.value = '';
-        btn.disabled = false; btn.textContent = 'Import Transactions';
-        return;
+        fileInput.value = ''; btn.disabled = false; btn.textContent = 'Import Transactions'; return;
       }
 
       btn.textContent = `Importing ${toAdd.length} items...`;
-
-      // Push all to Google Sheets in one batch request
       const values = toAdd.map(tx => [tx.date, tx.desc, tx.amount, tx.cat, tx.type]);
-      await sheetsReq('POST', `/values/${SHEET}!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
-        values: values
-      });
+      await sheetsReq('POST', `/values/${SHEET}!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, { values: values });
 
-      // Update local storage and UI
       transactions.push(...toAdd);
       transactions.sort((a,b) => b.date.localeCompare(a.date));
       localStorage.setItem('budget_txs', JSON.stringify(transactions));
@@ -698,25 +771,19 @@ async function handleExcelUpload(event) {
       showToast(`${toAdd.length} expenses imported ✓`, 'success');
       fileInput.value = ''; 
     } catch (err) {
-      console.error(err);
       showToast(`Import error: Check console`, 'error');
     } finally {
-      btn.disabled = false;
-      btn.textContent = 'Import Transactions';
+      btn.disabled = false; btn.textContent = 'Import Transactions';
     }
   };
-  
   reader.readAsArrayBuffer(file);
 }
 
 function parseExcelData(rows) {
   let startIndex = -1;
-
   for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    if (row && row.length > 1 && String(row[0]).includes('תאריך רכישה') && String(row[1]).includes('שם בית עסק')) {
-      startIndex = i + 1;
-      break;
+    if (rows[i] && rows[i].length > 1 && String(rows[i][0]).includes('תאריך רכישה') && String(rows[i][1]).includes('שם בית עסק')) {
+      startIndex = i + 1; break;
     }
   }
 
@@ -725,7 +792,6 @@ function parseExcelData(rows) {
   const results = [];
   for (let i = startIndex; i < rows.length; i++) {
     const row = rows[i];
-    
     if (!row || !row.length || !row[0] || String(row[0]).includes('סה"כ')) continue;
 
     const datePart = String(row[0]).trim(); 
@@ -733,21 +799,17 @@ function parseExcelData(rows) {
 
     const [dd, mm, yy] = datePart.split('.');
     const fullYear = parseInt(yy) > 50 ? `19${yy}` : `20${yy}`;
-    const isoDate = `${fullYear}-${mm}-${dd}`;
-
-    const desc = String(row[1] || '').trim();
     
+    const desc = String(row[1] || '').trim();
     let amountStr = String(row[4] || '0').replace(/[^\d.-]/g, '');
     const amount = parseFloat(amountStr); 
 
     if (isNaN(amount) || amount <= 0) continue;
 
     results.push({
-      date: isoDate,
-      desc: desc,
-      amount: amount,
-      cat: guessCategory(desc),
-      type: 'expense'
+      id: generateId(),
+      date: `${fullYear}-${mm}-${dd}`,
+      desc: desc, amount: amount, cat: guessCategory(desc), type: 'expense'
     });
   }
   return results;
@@ -793,39 +855,28 @@ function renderDashboard() {
   leftEl.textContent = `₪ ${Math.round(Math.abs(savingsLeft)).toLocaleString()}`;
   leftEl.className = `metric-value ${savingsLeft < 0 ? 'danger' : ''}`;
 
-  // Survival Calculation Fix: Based on true average monthly spend
   const uniqueMonths = new Set(expenses.map(t => t.date.substring(0, 7)));
   const monthsCount = Math.max(1, uniqueMonths.size);
   const avgMonthlyBurn = (totalSpentEver / monthsCount) + recurringTotal;
-  
   const monthsUntilBroke = avgMonthlyBurn > 0 ? (savingsLeft / avgMonthlyBurn) : 999;
 
   const banner = document.getElementById('survival-banner');
   const daysEl = document.getElementById('survival-days');
 
   if (savingsLeft <= 0) {
-    banner.className = 'survival';
-    document.getElementById('survival-label').textContent = 'Savings depleted';
-    document.getElementById('survival-sub').textContent = "You've spent all your savings";
-    daysEl.innerHTML = `0<span>days</span>`;
+    banner.className = 'survival'; document.getElementById('survival-label').textContent = 'Savings depleted';
+    document.getElementById('survival-sub').textContent = "You've spent all your savings"; daysEl.innerHTML = `0<span>days</span>`;
   } else if (monthsUntilBroke > 12) {
-    banner.className = 'survival safe';
-    document.getElementById('survival-label').textContent = 'Savings runway';
-    document.getElementById('survival-sub').textContent = 'Based on avg monthly spend';
-    daysEl.innerHTML = `${Math.round(monthsUntilBroke)}<span>mo</span>`;
+    banner.className = 'survival safe'; document.getElementById('survival-label').textContent = 'Savings runway';
+    document.getElementById('survival-sub').textContent = 'Based on avg monthly spend'; daysEl.innerHTML = `${Math.round(monthsUntilBroke)}<span>mo</span>`;
   } else if (monthsUntilBroke > 2) {
-    banner.className = 'survival warn';
-    document.getElementById('survival-label').textContent = 'Savings runway';
-    document.getElementById('survival-sub').textContent = 'Running lower than ideal';
-    daysEl.innerHTML = `${Math.round(monthsUntilBroke)}<span>mo</span>`;
+    banner.className = 'survival warn'; document.getElementById('survival-label').textContent = 'Savings runway';
+    document.getElementById('survival-sub').textContent = 'Running lower than ideal'; daysEl.innerHTML = `${Math.round(monthsUntilBroke)}<span>mo</span>`;
   } else {
-    banner.className = 'survival';
-    document.getElementById('survival-label').textContent = 'Low savings';
-    document.getElementById('survival-sub').textContent = 'Based on avg monthly spend';
-    daysEl.innerHTML = `${Math.round(monthsUntilBroke * 30)}<span>days</span>`;
+    banner.className = 'survival'; document.getElementById('survival-label').textContent = 'Low savings';
+    document.getElementById('survival-sub').textContent = 'Based on avg monthly spend'; daysEl.innerHTML = `${Math.round(monthsUntilBroke * 30)}<span>days</span>`;
   }
 
-  // Category bars
   const cats = {};
   txs.filter(t=>t.type==='expense').forEach(t => { cats[t.cat]=(cats[t.cat]||0)+t.amount; });
   recurring.forEach(r => { cats[r.cat]=(cats[r.cat]||0)+r.amount; });
@@ -834,7 +885,7 @@ function renderDashboard() {
     ? '<div class="empty">No expenses this month</div>'
     : sorted.map(([cat,amt]) => {
         const pct = monthSpent > 0 ? Math.round(amt/monthSpent*100) : 0;
-        return `<div><div class="cat-row"><span class="cat-name">${cat}</span><span class="cat-amount">₪ ${Math.round(amt).toLocaleString()} · ${pct}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${CAT_COLORS[cat]||'#888'}"></div></div></div>`;
+        return `<div><div class="cat-row"><span class="cat-name">${cat}</span><span class="cat-amount">₪ ${amt.toFixed(2)} · ${pct}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${CAT_COLORS[cat]||'#888'}"></div></div></div>`;
       }).join('');
 
   const recurringAsTx = recurring.map(r => ({...r, date:'monthly', type:'expense', recurring:true}));
@@ -852,17 +903,17 @@ function renderTxList(el, txs) {
   el.innerHTML = txs.length === 0
     ? '<div class="empty">No transactions yet</div>'
     : txs.map(t => `
-      <div class="tx-item">
+      <div class="tx-item ${!t.recurring ? 'clickable' : ''}" ${!t.recurring ? `onclick="openEditModal('${t.id}')"` : ''}>
         <div class="tx-left">
           <div class="tx-name">${t.desc}${t.recurring?'<span class="badge badge-recurring">↻ monthly</span>':''}</div>
           <div class="tx-meta">${t.cat} · ${t.date}</div>
         </div>
-        <div class="tx-amount ${t.type}">${t.type==='expense'?'−':'+'} ₪ ${Math.round(t.amount).toLocaleString()}</div>
+        <div class="tx-amount ${t.type}">${t.type==='expense'?'−':'+'} ₪ ${t.amount.toFixed(2)}</div>
       </div>`).join('');
 }
 
 // ══════════════════════════════════════
-// RENDER STATS (Includes Timeframe Filter)
+// RENDER STATS (Includes Stacked Chart)
 // ══════════════════════════════════════
 function renderStats() {
   const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -870,15 +921,12 @@ function renderStats() {
   const textColor = isDark ? '#888' : '#aaa';
   Chart.defaults.color = textColor;
 
-  // Get selected timeframe
   const tf = document.getElementById('stats-timeframe')?.value || 'all';
   const now = new Date();
   let startDate = new Date(now.getFullYear(), now.getMonth() - parseInt(tf) + 1, 1);
   if (tf === 'all') startDate = new Date(2000, 0, 1);
 
-  // Filter transactions
   const txs = transactions.filter(t => new Date(t.date) >= startDate);
-  
   const recurring = getRecurring();
   const recurringTotal = recurring.reduce((s,r)=>s+r.amount,0);
   
@@ -889,7 +937,6 @@ function renderStats() {
   const rangeSpent = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0) + totalRecurringInRange;
   const savingsLeft = getTotalSavings() - transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   
-  // Summary stats
   document.getElementById('stats-summary').innerHTML = `
     <div class="chart-title">${tf === '1' ? 'This month' : 'Selected period'} at a glance</div>
     <div class="stat-row"><span class="stat-label">Total spent</span><span class="stat-val" style="color:var(--danger)">₪ ${Math.round(rangeSpent).toLocaleString()}</span></div>
@@ -898,37 +945,26 @@ function renderStats() {
     <div class="stat-row"><span class="stat-label">Largest expense</span><span class="stat-val">${largestExpense(txs)}</span></div>
   `;
 
-  // Line chart — only show if "This Month" is selected
   const lineCard = document.getElementById('chart-line-card');
   if (tf === '1') {
     lineCard.style.display = 'block';
     const dayOfMonth = now.getDate();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
     const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
     const dayLabels = Array.from({length: dayOfMonth}, (_,i) => i+1);
-    const cumulative = [];
-    let running = recurringTotal; 
+    const cumulative = []; let running = recurringTotal; 
     for (let d = 1; d <= dayOfMonth; d++) {
       const dayStr = `${ym}-${String(d).padStart(2,'0')}`;
-      const daySpend = txs.filter(t=>t.type==='expense' && t.date===dayStr).reduce((s,t)=>s+t.amount,0);
-      running += daySpend;
+      running += txs.filter(t=>t.type==='expense' && t.date===dayStr).reduce((s,t)=>s+t.amount,0);
       cumulative.push(Math.round(running));
     }
-
     if (chartLine) chartLine.destroy();
     chartLine = new Chart(document.getElementById('chart-line'), {
       type: 'line',
-      data: {
-        labels: dayLabels,
-        datasets: [{ data: cumulative, borderColor: '#e74c3c', backgroundColor: 'rgba(231,76,60,0.08)', fill: true, tension: 0.4, pointRadius: 2, borderWidth: 2 }]
-      },
+      data: { labels: dayLabels, datasets: [{ data: cumulative, borderColor: '#e74c3c', backgroundColor: 'rgba(231,76,60,0.08)', fill: true, tension: 0.4, pointRadius: 2, borderWidth: 2 }] },
       options: { plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridColor }, ticks: { maxTicksLimit: 8 } }, y: { grid: { color: gridColor }, ticks: { callback: v => `₪${v.toLocaleString()}` } } } }
     });
-  } else {
-    lineCard.style.display = 'none';
-  }
+  } else { lineCard.style.display = 'none'; }
 
-  // Donut chart — by category for selected period
   const cats = {};
   txs.filter(t=>t.type==='expense').forEach(t => { cats[t.cat]=(cats[t.cat]||0)+t.amount; });
   recurring.forEach(r => { cats[r.cat]=(cats[r.cat]||0) + (r.amount * monthsInRange); });
@@ -937,33 +973,54 @@ function renderStats() {
   if (chartDonut) chartDonut.destroy();
   chartDonut = new Chart(document.getElementById('chart-donut'), {
     type: 'doughnut',
-    data: {
-      labels: catEntries.map(([c])=>c),
-      datasets: [{ data: catEntries.map(([,v])=>Math.round(v)), backgroundColor: catEntries.map(([c])=>CAT_COLORS[c]||'#9e9e9e'), borderWidth: 0, hoverOffset: 6 }]
-    },
+    data: { labels: catEntries.map(([c])=>c), datasets: [{ data: catEntries.map(([,v])=>Math.round(v)), backgroundColor: catEntries.map(([c])=>CAT_COLORS[c]||'#9e9e9e'), borderWidth: 0, hoverOffset: 6 }] },
     options: { cutout: '62%', plugins: { legend: { position: 'bottom', labels: { padding: 14, font: { family: "'DM Mono'" }, boxWidth: 12 } } } }
   });
 
-  // Bar chart — ALWAYS show last 6 months 
-  const months = [];
-  const monthSpends = [];
+  // Stacked Bar Chart Logic
+  const catFilter = document.getElementById('stats-cat-filter').value;
+  const barMonths = [];
+  const barDatasets = [];
+
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const ymKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    const label = d.toLocaleString('default', { month: 'short' });
-    const spent = transactions.filter(t=>t.type==='expense' && t.date.startsWith(ymKey)).reduce((s,t)=>s+t.amount,0);
-    months.push(label);
-    monthSpends.push(Math.round(spent + recurringTotal));
+    barMonths.push({
+      label: d.toLocaleString('default', { month: 'short' }),
+      prefix: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
+    });
   }
+
+  const categoriesToChart = catFilter === 'all' ? Object.keys(CAT_COLORS) : [catFilter];
+
+  categoriesToChart.forEach(cat => {
+    if (cat === 'Income') return;
+    const dataPoints = barMonths.map(m => {
+      const spent = transactions.filter(t => t.type === 'expense' && t.cat === cat && t.date.startsWith(m.prefix)).reduce((s,t) => s + t.amount, 0);
+      const recSpent = recurring.filter(r => r.cat === cat).reduce((s,r) => s + r.amount, 0);
+      return Math.round(spent + recSpent);
+    });
+    
+    if (dataPoints.some(v => v > 0)) {
+      barDatasets.push({
+        label: cat,
+        data: dataPoints,
+        backgroundColor: CAT_COLORS[cat] || '#9e9e9e',
+        borderRadius: catFilter === 'all' ? 0 : 6 // round corners only if not stacked
+      });
+    }
+  });
 
   if (chartBar) chartBar.destroy();
   chartBar = new Chart(document.getElementById('chart-bar'), {
     type: 'bar',
-    data: {
-      labels: months,
-      datasets: [{ data: monthSpends, backgroundColor: months.map((_,i) => i === 5 ? '#e74c3c' : (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)')), borderRadius: 6, borderSkipped: false }]
-    },
-    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: gridColor }, ticks: { callback: v => `₪${v.toLocaleString()}` } } } }
+    data: { labels: barMonths.map(m => m.label), datasets: barDatasets },
+    options: { 
+      plugins: { legend: { display: catFilter === 'all', position: 'bottom', labels: { boxWidth: 10, font: { size: 10, family: "'DM Mono'" } } } }, 
+      scales: { 
+        x: { stacked: catFilter === 'all', grid: { display: false } }, 
+        y: { stacked: catFilter === 'all', grid: { color: gridColor }, ticks: { callback: v => `₪${v.toLocaleString()}` } } 
+      } 
+    }
   });
 }
 
@@ -971,11 +1028,11 @@ function largestExpense(txs) {
   const expenses = txs.filter(t=>t.type==='expense');
   if (!expenses.length) return '–';
   const top = expenses.reduce((a,b) => a.amount > b.amount ? a : b);
-  return `${top.desc} (₪${Math.round(top.amount).toLocaleString()})`;
+  return `${top.desc} (₪${top.amount.toFixed(2)})`;
 }
 
 // ══════════════════════════════════════
-// RENDER SETTINGS
+// RENDER SETTINGS & UI
 // ══════════════════════════════════════
 function renderSettings() {
   document.getElementById('cfg-user').textContent = googleUser?.email || '–';
@@ -988,22 +1045,12 @@ function renderRecurringList() {
   const recurring = getRecurring();
   const el = document.getElementById('recurring-list');
   if (!el) return;
-  if (recurring.length === 0) {
-    el.innerHTML = '<div class="empty" style="padding:16px 0 8px;text-align:left;">No recurring expenses yet</div>';
-    return;
-  }
-  el.innerHTML = `<div style="margin-bottom:8px;">` +
-    recurring.map((r,i) => `
-      <div class="recurring-item" style="${i>0?'border-top:1px solid var(--border)':''}">
-        <div class="tx-left">
-          <div class="tx-name">${r.desc}<span class="badge badge-recurring">↻</span></div>
-          <div class="tx-meta">${r.cat}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-family:var(--mono);font-size:13px;color:var(--danger);">− ₪ ${Math.round(r.amount).toLocaleString()}</span>
-          <button class="del-btn" onclick="deleteRecurring(${i})">×</button>
-        </div>
-      </div>`).join('') + `</div>`;
+  if (recurring.length === 0) { el.innerHTML = '<div class="empty" style="padding:16px 0 8px;text-align:left;">No recurring expenses yet</div>'; return; }
+  el.innerHTML = `<div style="margin-bottom:8px;">` + recurring.map((r,i) => `
+    <div class="recurring-item" style="${i>0?'border-top:1px solid var(--border)':''}">
+      <div class="tx-left"><div class="tx-name">${r.desc}<span class="badge badge-recurring">↻</span></div><div class="tx-meta">${r.cat}</div></div>
+      <div style="display:flex;align-items:center;gap:10px;"><span style="font-family:var(--mono);font-size:13px;color:var(--danger);">− ₪ ${r.amount.toFixed(2)}</span><button class="del-btn" onclick="deleteRecurring(${i})">×</button></div>
+    </div>`).join('') + `</div>`;
 }
 
 function addRecurring() {
@@ -1015,88 +1062,47 @@ function addRecurring() {
   if (!config.recurring) config.recurring = [];
   config.recurring.push({ desc, amount, cat });
   localStorage.setItem('budget_config', JSON.stringify(config));
-  document.getElementById('rec-desc').value = '';
-  document.getElementById('rec-amount').value = '';
-  renderRecurringList(); renderDashboard();
-  showToast(`${desc} added ✓`, 'success');
+  document.getElementById('rec-desc').value = ''; document.getElementById('rec-amount').value = '';
+  renderRecurringList(); renderDashboard(); showToast(`${desc} added ✓`, 'success');
 }
 
 function deleteRecurring(i) {
-  config.recurring.splice(i, 1);
-  localStorage.setItem('budget_config', JSON.stringify(config));
-  renderRecurringList(); renderDashboard();
-  showToast('Removed', '');
+  config.recurring.splice(i, 1); localStorage.setItem('budget_config', JSON.stringify(config));
+  renderRecurringList(); renderDashboard(); showToast('Removed', '');
 }
 
 function updateSavings() {
   const val = parseFloat(document.getElementById('new-savings').value);
   if (!val || val <= 0) { showToast('Enter a valid amount', 'error'); return; }
-  config.savings = val;
-  localStorage.setItem('budget_config', JSON.stringify(config));
-  renderSettings(); renderDashboard();
-  showToast('Savings updated ✓', 'success');
+  config.savings = val; localStorage.setItem('budget_config', JSON.stringify(config));
+  renderSettings(); renderDashboard(); showToast('Savings updated ✓', 'success');
 }
 
-// ══════════════════════════════════════
-// UI HELPERS
-// ══════════════════════════════════════
-function showRawPage(id) {
-  ['setup-page','signin-page','dashboard-page','history-page','stats-page','settings-page']
-    .forEach(p => document.getElementById(p).classList.toggle('active', p===id));
-}
-
+function showRawPage(id) { ['setup-page','signin-page','dashboard-page','history-page','stats-page','settings-page'].forEach(p => document.getElementById(p).classList.toggle('active', p===id)); }
 function showPage(page) {
-  ['dashboard','history','stats','settings'].forEach(p => {
-    document.getElementById(`${p}-page`).classList.toggle('active', p===page);
-  });
+  ['dashboard','history','stats','settings'].forEach(p => document.getElementById(`${p}-page`).classList.toggle('active', p===page));
   ['home','history','stats','settings'].forEach(id => {
     const map = {home:'dashboard',history:'history',stats:'stats',settings:'settings'};
-    const btn = document.getElementById(`nav-${id}`);
-    if (btn) btn.classList.toggle('active', map[id]===page);
+    const btn = document.getElementById(`nav-${id}`); if (btn) btn.classList.toggle('active', map[id]===page);
   });
-  if (page==='history') renderHistory();
-  if (page==='stats') renderStats();
-  if (page==='settings') renderSettings();
+  if (page==='history') renderHistory(); if (page==='stats') renderStats(); if (page==='settings') renderSettings();
 }
 
 function setMonthLabel() {
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const now = new Date();
-  document.getElementById('month-label').textContent = `${months[now.getMonth()]} ${now.getFullYear()}`;
+  document.getElementById('month-label').textContent = `${months[new Date().getMonth()]} ${new Date().getFullYear()}`;
 }
 
 function setSyncStatus(s) {
   document.getElementById('sync-dot').className = `sync-dot ${s}`;
-  const el = document.getElementById('cfg-sync');
-  if (el) el.textContent = s==='ok'?'Synced':s==='pending'?'Syncing…':'Error';
+  const el = document.getElementById('cfg-sync'); if (el) el.textContent = s==='ok'?'Synced':s==='pending'?'Syncing…':'Error';
 }
 
-function openModal() {
-  document.getElementById('tx-date').value = today();
-  document.getElementById('modal-overlay').classList.add('open');
-  setTimeout(()=>document.getElementById('tx-amount').focus(), 300);
-}
-function closeModal() {
-  document.getElementById('modal-overlay').classList.remove('open');
-  document.getElementById('tx-amount').value='';
-  document.getElementById('tx-desc').value='';
-  document.getElementById('tx-date').value = today();
-}
-function closeModalOutside(e) { if (e.target===document.getElementById('modal-overlay')) closeModal(); }
-
-function setType(type) {
-  currentType = type;
-  document.getElementById('type-expense').className = `type-btn ${type==='expense'?'active expense':''}`;
-  document.getElementById('type-income').className = `type-btn ${type==='income'?'active income':''}`;
-  document.getElementById('tx-cat').disabled = type==='income';
-}
-
-function showToast(msg, type) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.className = `toast ${type} show`;
-  setTimeout(()=>el.classList.remove('show'), 3000);
-}
-
+function openModal() { document.getElementById('tx-date').value = today(); document.getElementById('modal-overlay').classList.add('open'); setTimeout(()=>document.getElementById('tx-amount').focus(), 300); }
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); document.getElementById('tx-amount').value=''; document.getElementById('tx-desc').value=''; document.getElementById('tx-date').value = today(); }
+function closeModalOutside(e, id) { if (e.target===document.getElementById(id)) { if(id === 'modal-overlay') closeModal(); else closeEditModal(); } }
+function setType(type) { currentType = type; document.getElementById('type-expense').className = `type-btn ${type==='expense'?'active expense':''}`; document.getElementById('type-income').className = `type-btn ${type==='income'?'active income':''}`; document.getElementById('tx-cat').disabled = type==='income'; }
+function showToast(msg, type) { const el = document.getElementById('toast'); el.textContent = msg; el.className = `toast ${type} show`; setTimeout(()=>el.classList.remove('show'), 3000); }
 function syncNow() { syncFromSheet(); }
 function resetApp() { document.getElementById('confirm-overlay').classList.add('open'); }
 function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('open'); }
