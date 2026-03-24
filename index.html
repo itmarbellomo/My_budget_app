@@ -11,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer onload="onGoogleLibraryLoad()"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 /* ── THEME TOKENS ── */
 :root {
@@ -198,7 +199,6 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 <body>
 <div class="toast" id="toast"></div>
 
-<!-- ══ SETUP ══ -->
 <div id="setup-page" class="page active">
   <div class="setup-screen">
     <div class="setup-badge">First-time setup</div>
@@ -223,7 +223,6 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   </div>
 </div>
 
-<!-- ══ SIGN-IN ══ -->
 <div id="signin-page" class="page">
   <div class="signin-screen">
     <div class="signin-icon">
@@ -239,7 +238,6 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   </div>
 </div>
 
-<!-- ══ DASHBOARD ══ -->
 <div id="dashboard-page" class="page">
   <div class="header">
     <div class="header-top">
@@ -273,7 +271,6 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   </div>
 </div>
 
-<!-- ══ HISTORY ══ -->
 <div id="history-page" class="page">
   <div class="header">
     <div class="header-top"><div class="app-title">All transactions</div></div>
@@ -283,22 +280,18 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   </div>
 </div>
 
-<!-- ══ STATS ══ -->
 <div id="stats-page" class="page">
   <div class="header">
     <div class="header-top"><div class="app-title">Statistics</div></div>
   </div>
   <div class="section">
-    <!-- Summary stats -->
     <div class="chart-card" id="stats-summary"></div>
 
-    <!-- Spending over time -->
     <div class="chart-card">
       <div class="chart-title">Spending over time (this month)</div>
       <canvas id="chart-line" height="180"></canvas>
     </div>
 
-    <!-- Category donut -->
     <div class="chart-card">
       <div class="chart-title">Category breakdown</div>
       <div style="max-width:220px;margin:0 auto;">
@@ -306,7 +299,6 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
       </div>
     </div>
 
-    <!-- Month vs month -->
     <div class="chart-card">
       <div class="chart-title">Month vs month</div>
       <canvas id="chart-bar" height="180"></canvas>
@@ -314,7 +306,6 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   </div>
 </div>
 
-<!-- ══ SETTINGS ══ -->
 <div id="settings-page" class="page">
   <div class="header">
     <div class="header-top"><div class="app-title">Settings</div></div>
@@ -333,6 +324,12 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
     </div>
     <button class="submit-btn" onclick="updateSavings()" style="margin-bottom:20px;">Save</button>
 
+    <div class="section-title" style="margin-bottom:12px; margin-top:12px;">Import Data</div>
+    <div class="form-group">
+      <label class="form-label">Upload Credit Card Excel (.xlsx)</label>
+      <input class="form-input" type="file" id="excel-upload" accept=".xlsx, .xls, .csv" style="padding: 9px; font-size: 13px;" />
+    </div>
+    <button class="submit-btn" onclick="handleExcelUpload(event)" style="margin-bottom:24px;">Import Transactions</button>
     <div class="section-title" style="margin-bottom:12px;">Monthly recurring expenses</div>
     <div id="recurring-list" style="margin-bottom:12px;"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
@@ -354,7 +351,6 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   </div>
 </div>
 
-<!-- ══ BOTTOM NAV ══ -->
 <nav class="bottom-nav" id="bottom-nav" style="display:none;">
   <button class="nav-btn active" id="nav-home" onclick="showPage('dashboard')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
@@ -375,7 +371,6 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   </button>
 </nav>
 
-<!-- ══ ADD MODAL ══ -->
 <div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -408,7 +403,6 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   </div>
 </div>
 
-<!-- ══ CONFIRM ══ -->
 <div class="confirm-overlay" id="confirm-overlay">
   <div class="confirm-box">
     <div class="modal-handle"></div>
@@ -627,6 +621,148 @@ async function submitTransaction() {
   } catch(e) {
     showToast(`Error: ${e.message}`, 'error');
   } finally { btn.disabled = false; btn.textContent = 'Add transaction'; }
+}
+
+// ══════════════════════════════════════
+// EXCEL IMPORT LOGIC (SheetJS)
+// ══════════════════════════════════════
+async function handleExcelUpload(event) {
+  const fileInput = document.getElementById('excel-upload');
+  if (!fileInput.files.length) { showToast('Please select a file', 'error'); return; }
+
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = 'Reading Excel...';
+
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+
+  reader.onload = async (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      
+      // Assume the first sheet is the one containing the transactions
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      
+      // Convert to a simple 2D array, ensuring dates stay formatted as strings
+      const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
+      
+      const newTxs = parseExcelData(rows);
+
+      if (!newTxs.length) {
+        showToast('No valid transactions found', 'error');
+        btn.disabled = false; btn.textContent = 'Import Transactions';
+        return;
+      }
+
+      // Filter out transactions we already have
+      const toAdd = newTxs.filter(tx => 
+        !transactions.some(existing => 
+          existing.date === tx.date && 
+          existing.desc === tx.desc && 
+          Math.abs(existing.amount - tx.amount) < 0.01
+        )
+      );
+
+      if (!toAdd.length) {
+        showToast('All transactions already synced', 'success');
+        fileInput.value = '';
+        btn.disabled = false; btn.textContent = 'Import Transactions';
+        return;
+      }
+
+      btn.textContent = `Importing ${toAdd.length} items...`;
+
+      // Push all to Google Sheets in one batch request
+      const values = toAdd.map(tx => [tx.date, tx.desc, tx.amount, tx.cat, tx.type]);
+      await sheetsReq('POST', `/values/${SHEET}!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+        values: values
+      });
+
+      // Update local storage and UI
+      transactions.push(...toAdd);
+      transactions.sort((a,b) => b.date.localeCompare(a.date));
+      localStorage.setItem('budget_txs', JSON.stringify(transactions));
+      
+      renderDashboard();
+      if(document.getElementById('history-page').classList.contains('active')) renderHistory();
+      
+      showToast(`${toAdd.length} expenses imported ✓`, 'success');
+      fileInput.value = ''; 
+    } catch (err) {
+      console.error(err);
+      showToast(`Import error: Check console`, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Import Transactions';
+    }
+  };
+  
+  // Read file as ArrayBuffer for SheetJS
+  reader.readAsArrayBuffer(file);
+}
+
+function parseExcelData(rows) {
+  let startIndex = -1;
+
+  // Find where the table data begins by looking for Israeli credit card headers
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (row && row.length > 1 && String(row[0]).includes('תאריך רכישה') && String(row[1]).includes('שם בית עסק')) {
+      startIndex = i + 1;
+      break;
+    }
+  }
+
+  if (startIndex === -1) return [];
+
+  const results = [];
+  for (let i = startIndex; i < rows.length; i++) {
+    const row = rows[i];
+    
+    // Stop at the totals summary line or empty lines
+    if (!row || !row.length || !row[0] || String(row[0]).includes('סה"כ')) continue;
+
+    const datePart = String(row[0]).trim(); // e.g. 08.02.26
+    if (!/^\d{2}\.\d{2}\.\d{2}$/.test(datePart)) continue;
+
+    // Convert DD.MM.YY to YYYY-MM-DD
+    const [dd, mm, yy] = datePart.split('.');
+    const fullYear = parseInt(yy) > 50 ? `19${yy}` : `20${yy}`;
+    const isoDate = `${fullYear}-${mm}-${dd}`;
+
+    const desc = String(row[1] || '').trim();
+    
+    // Index 4 is usually "סכום חיוב" (Billed Amount). 
+    // We clean it up in case the Excel library parsed it as a string with currency symbols.
+    let amountStr = String(row[4] || '0').replace(/[^\d.-]/g, '');
+    const amount = parseFloat(amountStr); 
+
+    // Skip zero charges 
+    if (isNaN(amount) || amount <= 0) continue;
+
+    results.push({
+      date: isoDate,
+      desc: desc,
+      amount: amount,
+      cat: guessCategory(desc),
+      type: 'expense'
+    });
+  }
+  return results;
+}
+
+function guessCategory(desc) {
+  if (/שופרסל|מאפה|קפה|רודיס|מאפיית|פיצוחי|סופר|מכולת|מסעדה/i.test(desc)) return 'Food';
+  if (/רב-פס|פנגו|מוביט|דלק|תחבורה|רכבת|אוטובוס/i.test(desc)) return 'Transport';
+  if (/מכבידנט|סופר פארם|בית מרקחת/i.test(desc)) return 'Health';
+  if (/מכלול|אוניברסיט|דיונון|קרביץ/i.test(desc)) return 'Education';
+  if (/דלתא|זארה|קסטרו/i.test(desc)) return 'Clothing';
+  if (/נולה|בר|קולנוע|הופעה/i.test(desc)) return 'Entertainment';
+  if (/עירית|חשמל|מים|ארנונה/i.test(desc)) return 'Rent';
+  return 'Other'; 
 }
 
 // ══════════════════════════════════════
