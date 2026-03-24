@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
+<title>Budget</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer onload="onGoogleLibraryLoad()"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ── THEME TOKENS ── */
+:root {
+  --bg: #f5f4f0; --surface: #ffffff; --surface2: #eeede9;
+  --border: rgba(0,0,0,0.07); --border2: rgba(0,0,0,0.13);
+  --text: #1a1a18; --muted: #777; --dim: #aaa;
+  --accent: #2d6a2d; --accent-bg: rgba(45,106,45,0.1); --accent-text: #2d6a2d;
+  --danger: #c0392b; --danger-dim: rgba(192,57,43,0.1);
+  --success: #217a21; --success-dim: rgba(33,122,33,0.1);
+  --warn: #b07d00; --warn-dim: rgba(176,125,0,0.1);
+  --font: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace;
+  --radius: 14px; --radius-sm: 8px; --shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f0f0f; --surface: #181818; --surface2: #222;
+    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
+    --text: #f0ede8; --muted: #888; --dim: #555;
+    --accent: #c8f060; --accent-bg: rgba(200,240,96,0.12); --accent-text: #c8f060;
+    --danger: #ff6b6b; --danger-dim: rgba(255,107,107,0.12);
+    --success: #6bffa8; --success-dim: rgba(107,255,168,0.12);
+    --warn: #ffcc44; --warn-dim: rgba(255,204,68,0.12);
+    --shadow: none;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; max-width: 480px; margin: 0 auto; padding-bottom: 100px; transition: background 0.2s, color 0.2s; }
+
+/* HEADER */
+.header { padding: 56px 24px 20px; }
+.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.app-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+.month-label { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+
+/* SURVIVAL BANNER */
+.survival { margin: 16px 24px 24px; background: var(--danger-dim); border: 1px solid var(--danger); border-radius: var(--radius); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; transition: all 0.4s; opacity: 0.85; }
+.survival.safe { background: var(--success-dim); border-color: var(--success); }
+.survival.warn { background: var(--warn-dim); border-color: var(--warn); }
+.survival-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--danger); text-transform: uppercase; margin-bottom: 4px; }
+.survival.safe .survival-label { color: var(--success); }
+.survival.warn .survival-label { color: var(--warn); }
+.survival-sub { font-size: 12px; color: var(--muted); }
+.survival-days { font-family: var(--mono); font-size: 36px; font-weight: 300; color: var(--danger); white-space: nowrap; }
+.survival.safe .survival-days { color: var(--success); }
+.survival.warn .survival-days { color: var(--warn); }
+.survival-days span { font-size: 13px; margin-left: 2px; opacity: 0.7; }
+
+/* METRICS */
+.metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 0 24px 24px; }
+.metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 12px; box-shadow: var(--shadow); }
+.metric-label { font-size: 10px; font-family: var(--mono); letter-spacing: 0.08em; color: var(--dim); text-transform: uppercase; margin-bottom: 6px; }
+.metric-value { font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--text); word-break: break-all; }
+.metric-value.danger { color: var(--danger); }
+.metric-value.success { color: var(--success); }
+
+/* SECTION */
+.section { padding: 0 24px 24px; }
+.section-title { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--dim); text-transform: uppercase; margin-bottom: 12px; }
+
+/* CATEGORY BARS */
+.cat-list { display: flex; flex-direction: column; gap: 10px; }
+.cat-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+.cat-name { font-size: 13px; color: var(--text); }
+.cat-amount { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.bar-track { height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+
+/* TRANSACTIONS */
+.tx-list { display: flex; flex-direction: column; gap: 1px; }
+.tx-item { background: var(--surface); padding: 13px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; transition: background 0.15s; box-shadow: var(--shadow); }
+.tx-item:first-child { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+.tx-item:last-child { border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+.tx-item:only-child { border-radius: var(--radius-sm); }
+.tx-item:hover { background: var(--surface2); }
+.tx-left { flex: 1; min-width: 0; }
+.tx-name { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+.tx-meta { font-family: var(--mono); font-size: 10px; color: var(--dim); }
+.tx-amount { font-family: var(--mono); font-size: 13px; font-weight: 500; white-space: nowrap; }
+.tx-amount.expense { color: var(--danger); }
+.tx-amount.income { color: var(--success); }
+.empty { text-align: center; padding: 40px 20px; color: var(--dim); font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; }
+
+/* BADGES */
+.badge { font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; border-radius: 4px; padding: 2px 6px; text-transform: uppercase; flex-shrink: 0; }
+.badge-recurring { color: var(--accent-text); background: var(--accent-bg); }
+
+/* BOTTOM NAV */
+.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: rgba(245,244,240,0.88); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-around; padding: 10px 12px 28px; gap: 4px; z-index: 100; }
+@media (prefers-color-scheme: dark) { .bottom-nav { background: rgba(15,15,15,0.88); } }
+.nav-btn { flex: 1; background: none; border: none; color: var(--dim); font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 4px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.nav-btn svg { width: 18px; height: 18px; stroke-width: 1.5; }
+.nav-btn.active { color: var(--accent-text); }
+.nav-btn.add-btn { background: var(--accent-text); color: var(--bg); border-radius: 50px; flex: 0 0 52px; height: 42px; font-size: 22px; flex-direction: row; padding: 0; }
+@media (prefers-color-scheme: dark) { .nav-btn.add-btn { color: #0f0f0f; } }
+.nav-btn.add-btn:active { transform: scale(0.95); }
+
+/* MODAL */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal { width: 100%; max-width: 480px; margin: 0 auto; background: var(--surface); border-radius: 24px 24px 0 0; border-top: 1px solid var(--border2); padding: 20px 24px 48px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); }
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-handle { width: 36px; height: 3px; background: var(--border2); border-radius: 2px; margin: 0 auto 24px; }
+.modal-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 20px; }
+
+/* FORM */
+.form-group { margin-bottom: 14px; }
+.form-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--dim); text-transform: uppercase; display: block; margin-bottom: 6px; }
+.form-input, .form-select { width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); font-family: var(--mono); font-size: 15px; padding: 12px 14px; outline: none; transition: border-color 0.15s; -webkit-appearance: none; }
+.form-input:focus, .form-select:focus { border-color: var(--accent-text); }
+.form-input::placeholder { color: var(--dim); }
+.type-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
+.type-btn { background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 12px; cursor: pointer; transition: all 0.15s; }
+.type-btn.active.expense { background: var(--danger-dim); border-color: var(--danger); color: var(--danger); }
+.type-btn.active.income { background: var(--success-dim); border-color: var(--success); color: var(--success); }
+.submit-btn { width: 100%; background: var(--accent-text); border: none; border-radius: 50px; color: var(--bg); font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; padding: 15px; cursor: pointer; transition: all 0.15s; margin-top: 6px; }
+@media (prefers-color-scheme: dark) { .submit-btn { color: #0f0f0f; } }
+.submit-btn:active { transform: scale(0.98); opacity: 0.9; }
+.submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* SETUP / SIGN-IN */
+.setup-screen, .signin-screen { padding: 60px 24px 40px; }
+.signin-screen { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.setup-badge { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--accent-text); border: 1px solid var(--accent-bg); border-radius: 50px; padding: 4px 12px; margin-bottom: 20px; text-transform: uppercase; }
+.setup-title { font-size: 26px; font-weight: 300; line-height: 1.3; margin-bottom: 10px; letter-spacing: -0.02em; }
+.setup-sub { font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 28px; }
+.setup-divider { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; color: var(--dim); font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; }
+.setup-divider::before, .setup-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.signin-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--accent-bg); display: flex; align-items: center; justify-content: center; margin-bottom: 24px; }
+.google-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 50px; color: var(--text); font-family: var(--font); font-size: 14px; padding: 14px 20px; cursor: pointer; transition: all 0.15s; }
+.google-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.google-btn:not(:disabled):hover { border-color: var(--accent-text); }
+
+/* SETTINGS */
+.settings-group { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; box-shadow: var(--shadow); }
+.settings-row { padding: 13px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--border); }
+.settings-row:last-child { border-bottom: none; }
+.settings-key { font-size: 13px; color: var(--text); flex: 1; }
+.settings-val { font-family: var(--mono); font-size: 11px; color: var(--dim); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* RECURRING */
+.recurring-item { background: var(--surface); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.recurring-item:first-child { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+.recurring-item:last-child { border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+.recurring-item:only-child { border-radius: var(--radius-sm); }
+.del-btn { background: none; border: none; color: var(--dim); cursor: pointer; font-size: 18px; padding: 2px 6px; border-radius: 4px; line-height: 1; }
+.del-btn:hover { color: var(--danger); }
+
+/* SYNC DOT */
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); display: inline-block; margin-right: 5px; }
+.sync-dot.ok { background: var(--success); }
+.sync-dot.err { background: var(--danger); }
+.sync-dot.pending { background: var(--warn); animation: pulse 1.2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* TOAST */
+.toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-80px); background: var(--surface); border: 1px solid var(--border2); border-radius: 50px; padding: 10px 20px; font-family: var(--mono); font-size: 12px; color: var(--text); z-index: 999; transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.success { color: var(--success); }
+.toast.error { color: var(--danger); }
+
+/* CONFIRM */
+.confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 300; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+.confirm-overlay.open { opacity: 1; pointer-events: all; }
+.confirm-box { width: 100%; max-width: 480px; margin: 0 auto; background: var(--surface); border-radius: 24px 24px 0 0; border-top: 1px solid var(--border2); padding: 24px 24px 48px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); }
+.confirm-overlay.open .confirm-box { transform: translateY(0); }
+.confirm-title { font-size: 16px; font-weight: 500; margin-bottom: 8px; }
+.confirm-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+.confirm-actions { display: flex; flex-direction: column; gap: 10px; }
+
+/* STATS */
+.chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow); }
+.chart-title { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--dim); text-transform: uppercase; margin-bottom: 16px; }
+.stat-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.stat-row:last-child { border-bottom: none; }
+.stat-label { font-size: 13px; color: var(--text); }
+.stat-val { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--text); }
+
+/* USER AVATAR */
+.user-avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
+
+.page { display: none; }
+.page.active { display: block; }
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<div id="setup-page" class="page active">
+  <div class="setup-screen">
+    <div class="setup-badge">First-time setup</div>
+    <h1 class="setup-title">Connect your Google Sheet</h1>
+    <p class="setup-sub">Enter your details below. You'll sign in with Google on the next screen so the app can read and write your sheet securely.</p>
+    <div class="setup-divider">your details</div>
+    <div class="form-group">
+      <label class="form-label">Spreadsheet ID</label>
+      <input class="form-input" id="setup-sheet-id" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" />
+      <p style="font-size:11px;color:var(--dim);margin-top:5px;font-family:var(--mono);">…/spreadsheets/d/<u>THIS_PART</u>/edit</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label">OAuth Client ID</label>
+      <input class="form-input" id="setup-client-id" placeholder="123456789-abc...apps.googleusercontent.com" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Total savings (₪)</label>
+      <input class="form-input" id="setup-savings" type="number" placeholder="50000" />
+      <p style="font-size:11px;color:var(--dim);margin-top:5px;font-family:var(--mono);">Your total budget to live from</p>
+    </div>
+    <button class="submit-btn" onclick="saveSetup()">Continue →</button>
+  </div>
+</div>
+
+<div id="signin-page" class="page">
+  <div class="signin-screen">
+    <div class="signin-icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </div>
+    <h2 class="setup-title">Sign in to continue</h2>
+    <p class="setup-sub">Sign in with your Google account to securely read and write your budget spreadsheet.</p>
+    <button class="google-btn" id="signin-btn" onclick="signIn()" disabled>
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      <span id="signin-btn-label">Loading…</span>
+    </button>
+    <button onclick="showRawPage('setup-page')" style="background:none;border:none;color:var(--dim);font-family:var(--mono);font-size:11px;margin-top:20px;cursor:pointer;">← Back</button>
+  </div>
+</div>
+
+<div id="dashboard-page" class="page">
+  <div class="header">
+    <div class="header-top">
+      <div class="app-title">Budget</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="sync-dot" id="sync-dot"></span>
+        <div id="user-pill"></div>
+        <span class="month-label" id="month-label"></span>
+      </div>
+    </div>
+  </div>
+  <div class="survival" id="survival-banner">
+    <div>
+      <div class="survival-label" id="survival-label">Savings runway</div>
+      <div class="survival-sub" id="survival-sub">At current burn rate</div>
+    </div>
+    <div class="survival-days" id="survival-days">–<span>days</span></div>
+  </div>
+  <div class="metrics">
+    <div class="metric"><div class="metric-label">Savings</div><div class="metric-value success" id="m-savings">–</div></div>
+    <div class="metric"><div class="metric-label">Spent</div><div class="metric-value danger" id="m-spent">–</div></div>
+    <div class="metric"><div class="metric-label">Left</div><div class="metric-value" id="m-left">–</div></div>
+  </div>
+  <div class="section">
+    <div class="section-title">This month by category</div>
+    <div class="cat-list" id="cat-list"></div>
+  </div>
+  <div class="section">
+    <div class="section-title">Recent</div>
+    <div class="tx-list" id="tx-list"></div>
+  </div>
+</div>
+
+<div id="history-page" class="page">
+  <div class="header">
+    <div class="header-top"><div class="app-title">All transactions</div></div>
+  </div>
+  <div class="section">
+    <div class="tx-list" id="tx-all-list"></div>
+  </div>
+</div>
+
+<div id="stats-page" class="page">
+  <div class="header">
+    <div class="header-top"><div class="app-title">Statistics</div></div>
+  </div>
+  <div class="section">
+    <div class="chart-card" id="stats-summary"></div>
+
+    <div class="chart-card">
+      <div class="chart-title">Spending over time (this month)</div>
+      <canvas id="chart-line" height="180"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Category breakdown</div>
+      <div style="max-width:220px;margin:0 auto;">
+        <canvas id="chart-donut" height="220"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Month vs month</div>
+      <canvas id="chart-bar" height="180"></canvas>
+    </div>
+  </div>
+</div>
+
+<div id="settings-page" class="page">
+  <div class="header">
+    <div class="header-top"><div class="app-title">Settings</div></div>
+  </div>
+  <div class="section">
+    <div class="settings-group">
+      <div class="settings-row"><span class="settings-key">Signed in as</span><span class="settings-val" id="cfg-user">–</span></div>
+      <div class="settings-row"><span class="settings-key">Spreadsheet ID</span><span class="settings-val" id="cfg-sheet-id">–</span></div>
+      <div class="settings-row"><span class="settings-key">Total savings</span><span class="settings-val" id="cfg-savings">–</span></div>
+      <div class="settings-row"><span class="settings-key">Sync status</span><span class="settings-val" id="cfg-sync">–</span></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Update total savings (₪)</label>
+      <input class="form-input" id="new-savings" type="number" placeholder="50000" />
+    </div>
+    <button class="submit-btn" onclick="updateSavings()" style="margin-bottom:20px;">Save</button>
+
+    <div class="section-title" style="margin-bottom:12px; margin-top:12px;">Import Data</div>
+    <div class="form-group">
+      <label class="form-label">Upload Credit Card Excel (.xlsx)</label>
+      <input class="form-input" type="file" id="excel-upload" accept=".xlsx, .xls, .csv" style="padding: 9px; font-size: 13px;" />
+    </div>
+    <button class="submit-btn" onclick="handleExcelUpload(event)" style="margin-bottom:24px;">Import Transactions</button>
+    <div class="section-title" style="margin-bottom:12px;">Monthly recurring expenses</div>
+    <div id="recurring-list" style="margin-bottom:12px;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+      <input class="form-input" id="rec-desc" type="text" placeholder="e.g. Rent" />
+      <input class="form-input" id="rec-amount" type="number" placeholder="₪ amount" inputmode="decimal" />
+    </div>
+    <div class="form-group">
+      <select class="form-select" id="rec-cat">
+        <option>Rent</option><option>Food</option><option>Transport</option>
+        <option>Entertainment</option><option>Health</option><option>Education</option>
+        <option>Clothing</option><option>Other</option>
+      </select>
+    </div>
+    <button class="submit-btn" onclick="addRecurring()" style="margin-bottom:24px;">+ Add recurring</button>
+
+    <button class="submit-btn" onclick="syncNow()" style="background:var(--surface2);color:var(--text);margin-bottom:10px;">↻ Sync now</button>
+    <button class="submit-btn" onclick="signOut()" style="background:var(--surface2);color:var(--muted);margin-bottom:10px;">Sign out</button>
+    <button class="submit-btn" onclick="resetApp()" style="background:var(--danger-dim);color:var(--danger);">Reset app</button>
+  </div>
+</div>
+
+<nav class="bottom-nav" id="bottom-nav" style="display:none;">
+  <button class="nav-btn active" id="nav-home" onclick="showPage('dashboard')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
+    Home
+  </button>
+  <button class="nav-btn" id="nav-history" onclick="showPage('history')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+    History
+  </button>
+  <button class="nav-btn add-btn" onclick="openModal()">+</button>
+  <button class="nav-btn" id="nav-stats" onclick="showPage('stats')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    Stats
+  </button>
+  <button class="nav-btn" id="nav-settings" onclick="showPage('settings')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    Settings
+  </button>
+</nav>
+
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">New transaction</div>
+    <div class="type-toggle">
+      <button class="type-btn active expense" id="type-expense" onclick="setType('expense')">− Expense</button>
+      <button class="type-btn" id="type-income" onclick="setType('income')">+ Income</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Amount (₪)</label>
+      <input class="form-input" id="tx-amount" type="number" placeholder="0" inputmode="decimal" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <input class="form-input" id="tx-desc" type="text" placeholder="e.g. Shufersal, Rav-Kav…" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <select class="form-select" id="tx-cat">
+        <option>Food</option><option>Rent</option><option>Transport</option>
+        <option>Entertainment</option><option>Health</option><option>Education</option>
+        <option>Clothing</option><option>Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Date</label>
+      <input class="form-input" id="tx-date" type="date" />
+    </div>
+    <button class="submit-btn" id="submit-btn" onclick="submitTransaction()">Add transaction</button>
+  </div>
+</div>
+
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="modal-handle"></div>
+    <div class="confirm-title">Reset everything?</div>
+    <div class="confirm-sub">This will delete all local data and settings. Your Google Sheet stays safe.</div>
+    <div class="confirm-actions">
+      <button class="submit-btn" onclick="confirmReset()" style="background:var(--danger-dim);color:var(--danger);">Yes, reset app</button>
+      <button class="submit-btn" onclick="closeConfirm()" style="background:var(--surface2);color:var(--muted);">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+const CAT_COLORS = {
+  Food:'#4caf50', Rent:'#2196f3', Transport:'#ff9800',
+  Entertainment:'#e91e63', Health:'#00bcd4', Education:'#9c27b0',
+  Clothing:'#ff5722', Income:'#4caf50', Other:'#9e9e9e'
+};
+let config = {}, transactions = [], currentType = 'expense';
+let accessToken = null, tokenExpiry = 0, googleUser = null;
+let chartLine = null, chartDonut = null, chartBar = null;
+
+function cfg(k) { return config[k] || ''; }
+function getRecurring() { return config.recurring || []; }
+function getTotalSavings() { return parseFloat(config.savings) || 0; }
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+function init() {
+  config = JSON.parse(localStorage.getItem('budget_config') || '{}');
+  transactions = JSON.parse(localStorage.getItem('budget_txs') || '[]');
+  accessToken = localStorage.getItem('budget_token') || null;
+  tokenExpiry = parseInt(localStorage.getItem('budget_token_expiry') || '0');
+  const u = localStorage.getItem('budget_user');
+  if (u) googleUser = JSON.parse(u);
+
+  // Set today as default date in modal
+  document.getElementById('tx-date').value = today();
+
+  if (!cfg('sheetId') || !cfg('clientId')) { showRawPage('setup-page'); return; }
+  if (!accessToken || Date.now() > tokenExpiry) { showRawPage('signin-page'); return; }
+  launchApp();
+}
+
+function today() { return new Date().toISOString().split('T')[0]; }
+
+function launchApp() {
+  showRawPage('dashboard-page');
+  document.getElementById('bottom-nav').style.display = 'flex';
+  setMonthLabel();
+  renderDashboard();
+  renderSettings();
+  if (googleUser) renderUserPill();
+  syncFromSheet();
+}
+
+// ══════════════════════════════════════
+// SETUP
+// ══════════════════════════════════════
+function saveSetup() {
+  const sheetId = document.getElementById('setup-sheet-id').value.trim();
+  const clientId = document.getElementById('setup-client-id').value.trim();
+  const savings = parseFloat(document.getElementById('setup-savings').value) || 0;
+  if (!sheetId || !clientId) { showToast('Please fill in all fields', 'error'); return; }
+  config = { sheetId, clientId, savings };
+  localStorage.setItem('budget_config', JSON.stringify(config));
+  showRawPage('signin-page');
+}
+
+// ══════════════════════════════════════
+// GOOGLE AUTH
+// ══════════════════════════════════════
+let tokenClient = null;
+
+function onGoogleLibraryLoad() {
+  const btn = document.getElementById('signin-btn');
+  if (btn) { btn.disabled = false; }
+  document.getElementById('signin-btn-label').textContent = 'Sign in with Google';
+}
+
+function signIn() {
+  if (!cfg('clientId')) { showRawPage('setup-page'); return; }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: cfg('clientId'),
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    callback: async (resp) => {
+      if (resp.error) { showToast(`Auth error: ${resp.error}`, 'error'); return; }
+      accessToken = resp.access_token;
+      tokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
+      localStorage.setItem('budget_token', accessToken);
+      localStorage.setItem('budget_token_expiry', tokenExpiry);
+      await fetchUserInfo(accessToken);
+      launchApp();
+    }
+  });
+  tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+async function fetchUserInfo(token) {
+  try {
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${token}` } });
+    googleUser = await r.json();
+    localStorage.setItem('budget_user', JSON.stringify(googleUser));
+  } catch(e) {}
+}
+
+function renderUserPill() {
+  if (!googleUser?.picture) return;
+  document.getElementById('user-pill').innerHTML = `<img class="user-avatar" src="${googleUser.picture}" referrerpolicy="no-referrer">`;
+}
+
+function signOut() {
+  if (window.google && accessToken) google.accounts.oauth2.revoke(accessToken, ()=>{});
+  accessToken = null; tokenExpiry = 0; googleUser = null;
+  ['budget_token','budget_token_expiry','budget_user'].forEach(k => localStorage.removeItem(k));
+  document.getElementById('bottom-nav').style.display = 'none';
+  showRawPage('signin-page');
+}
+
+async function ensureFreshToken() {
+  if (accessToken && Date.now() < tokenExpiry) return true;
+  return new Promise(resolve => {
+    if (!tokenClient) tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: cfg('clientId'),
+      scope: 'https://www.googleapis.com/auth/spreadsheets',
+      callback: (resp) => {
+        if (resp.error) { resolve(false); return; }
+        accessToken = resp.access_token;
+        tokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
+        localStorage.setItem('budget_token', accessToken);
+        localStorage.setItem('budget_token_expiry', tokenExpiry);
+        resolve(true);
+      }
+    });
+    tokenClient.requestAccessToken({ prompt: '' });
+  });
+}
+
+// ══════════════════════════════════════
+// SHEETS API
+// ══════════════════════════════════════
+const SHEET = 'Transactions';
+
+async function sheetsReq(method, path, body) {
+  const ok = await ensureFreshToken();
+  if (!ok) throw new Error('Not authenticated');
+  const base = `https://sheets.googleapis.com/v4/spreadsheets/${cfg('sheetId')}`;
+  const r = await fetch(`${base}${path}`, {
+    method,
+    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e?.error?.message || r.status); }
+  return r.json();
+}
+
+async function ensureSheet() {
+  try {
+    const meta = await sheetsReq('GET', '?fields=sheets.properties.title');
+    const exists = meta.sheets.some(s => s.properties.title === SHEET);
+    if (!exists) {
+      await sheetsReq('POST', ':batchUpdate', { requests:[{addSheet:{properties:{title:SHEET}}}] });
+      await sheetsReq('PUT', `/values/${SHEET}!A1:E1?valueInputOption=RAW`, { values:[['Date','Description','Amount','Category','Type']] });
+    }
+  } catch(e) { console.warn('ensureSheet:', e); }
+}
+
+async function syncFromSheet() {
+  setSyncStatus('pending');
+  try {
+    await ensureSheet();
+    const data = await sheetsReq('GET', `/values/${SHEET}!A:E`);
+    transactions = (data.values || []).slice(1).map(r => ({
+      date: r[0]||'', desc: r[1]||'', amount: parseFloat(r[2])||0, cat: r[3]||'Other', type: r[4]||'expense'
+    })).filter(t => t.date);
+    localStorage.setItem('budget_txs', JSON.stringify(transactions));
+    setSyncStatus('ok');
+    renderDashboard();
+    renderHistory();
+  } catch(e) {
+    setSyncStatus('err');
+    showToast(`Sync failed: ${e.message}`, 'error');
+  }
+}
+
+async function appendRow(tx) {
+  await sheetsReq('POST', `/values/${SHEET}!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+    values: [[tx.date, tx.desc, tx.amount, tx.cat, tx.type]]
+  });
+}
+
+// ══════════════════════════════════════
+// ADD TRANSACTION
+// ══════════════════════════════════════
+async function submitTransaction() {
+  const amount = parseFloat(document.getElementById('tx-amount').value);
+  const desc = document.getElementById('tx-desc').value.trim();
+  const cat = currentType === 'income' ? 'Income' : document.getElementById('tx-cat').value;
+  const date = document.getElementById('tx-date').value || today();
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return; }
+  if (!desc) { showToast('Add a description', 'error'); return; }
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const tx = { date, desc, amount, cat, type: currentType };
+  try {
+    await appendRow(tx);
+    transactions.unshift(tx);
+    transactions.sort((a,b) => b.date.localeCompare(a.date));
+    localStorage.setItem('budget_txs', JSON.stringify(transactions));
+    closeModal(); renderDashboard(); renderHistory();
+    showToast('Saved to Google Sheets ✓', 'success');
+  } catch(e) {
+    showToast(`Error: ${e.message}`, 'error');
+  } finally { btn.disabled = false; btn.textContent = 'Add transaction'; }
+}
+
+// ══════════════════════════════════════
+// EXCEL IMPORT LOGIC (SheetJS)
+// ══════════════════════════════════════
+async function handleExcelUpload(event) {
+  const fileInput = document.getElementById('excel-upload');
+  if (!fileInput.files.length) { showToast('Please select a file', 'error'); return; }
+
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = 'Reading Excel...';
+
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+
+  reader.onload = async (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      
+      // Assume the first sheet is the one containing the transactions
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      
+      // Convert to a simple 2D array, ensuring dates stay formatted as strings
+      const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
+      
+      const newTxs = parseExcelData(rows);
+
+      if (!newTxs.length) {
+        showToast('No valid transactions found', 'error');
+        btn.disabled = false; btn.textContent = 'Import Transactions';
+        return;
+      }
+
+      // Filter out transactions we already have
+      const toAdd = newTxs.filter(tx => 
+        !transactions.some(existing => 
+          existing.date === tx.date && 
+          existing.desc === tx.desc && 
+          Math.abs(existing.amount - tx.amount) < 0.01
+        )
+      );
+
+      if (!toAdd.length) {
+        showToast('All transactions already synced', 'success');
+        fileInput.value = '';
+        btn.disabled = false; btn.textContent = 'Import Transactions';
+        return;
+      }
+
+      btn.textContent = `Importing ${toAdd.length} items...`;
+
+      // Push all to Google Sheets in one batch request
+      const values = toAdd.map(tx => [tx.date, tx.desc, tx.amount, tx.cat, tx.type]);
+      await sheetsReq('POST', `/values/${SHEET}!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+        values: values
+      });
+
+      // Update local storage and UI
+      transactions.push(...toAdd);
+      transactions.sort((a,b) => b.date.localeCompare(a.date));
+      localStorage.setItem('budget_txs', JSON.stringify(transactions));
+      
+      renderDashboard();
+      if(document.getElementById('history-page').classList.contains('active')) renderHistory();
+      
+      showToast(`${toAdd.length} expenses imported ✓`, 'success');
+      fileInput.value = ''; 
+    } catch (err) {
+      console.error(err);
+      showToast(`Import error: Check console`, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Import Transactions';
+    }
+  };
+  
+  // Read file as ArrayBuffer for SheetJS
+  reader.readAsArrayBuffer(file);
+}
+
+function parseExcelData(rows) {
+  let startIndex = -1;
+
+  // Find where the table data begins by looking for Israeli credit card headers
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (row && row.length > 1 && String(row[0]).includes('תאריך רכישה') && String(row[1]).includes('שם בית עסק')) {
+      startIndex = i + 1;
+      break;
+    }
+  }
+
+  if (startIndex === -1) return [];
+
+  const results = [];
+  for (let i = startIndex; i < rows.length; i++) {
+    const row = rows[i];
+    
+    // Stop at the totals summary line or empty lines
+    if (!row || !row.length || !row[0] || String(row[0]).includes('סה"כ')) continue;
+
+    const datePart = String(row[0]).trim(); // e.g. 08.02.26
+    if (!/^\d{2}\.\d{2}\.\d{2}$/.test(datePart)) continue;
+
+    // Convert DD.MM.YY to YYYY-MM-DD
+    const [dd, mm, yy] = datePart.split('.');
+    const fullYear = parseInt(yy) > 50 ? `19${yy}` : `20${yy}`;
+    const isoDate = `${fullYear}-${mm}-${dd}`;
+
+    const desc = String(row[1] || '').trim();
+    
+    // Index 4 is usually "סכום חיוב" (Billed Amount). 
+    // We clean it up in case the Excel library parsed it as a string with currency symbols.
+    let amountStr = String(row[4] || '0').replace(/[^\d.-]/g, '');
+    const amount = parseFloat(amountStr); 
+
+    // Skip zero charges 
+    if (isNaN(amount) || amount <= 0) continue;
+
+    results.push({
+      date: isoDate,
+      desc: desc,
+      amount: amount,
+      cat: guessCategory(desc),
+      type: 'expense'
+    });
+  }
+  return results;
+}
+
+function guessCategory(desc) {
+  if (/שופרסל|מאפה|קפה|רודיס|מאפיית|פיצוחי|סופר|מכולת|מסעדה/i.test(desc)) return 'Food';
+  if (/רב-פס|פנגו|מוביט|דלק|תחבורה|רכבת|אוטובוס/i.test(desc)) return 'Transport';
+  if (/מכבידנט|סופר פארם|בית מרקחת/i.test(desc)) return 'Health';
+  if (/מכלול|אוניברסיט|דיונון|קרביץ/i.test(desc)) return 'Education';
+  if (/דלתא|זארה|קסטרו/i.test(desc)) return 'Clothing';
+  if (/נולה|בר|קולנוע|הופעה/i.test(desc)) return 'Entertainment';
+  if (/עירית|חשמל|מים|ארנונה/i.test(desc)) return 'Rent';
+  return 'Other'; 
+}
+
+// ══════════════════════════════════════
+// RENDER DASHBOARD
+// ══════════════════════════════════════
+function currentMonthTxs() {
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  return transactions.filter(t => t.date.startsWith(ym));
+}
+
+function renderDashboard() {
+  const txs = currentMonthTxs();
+  const recurring = getRecurring();
+  const totalSavings = getTotalSavings();
+  const totalSpentEver = transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0)
+    + recurring.reduce((s,r)=>s+r.amount,0); // recurring this month
+  const savingsLeft = totalSavings - transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+
+  const txSpent = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const recurringSpent = recurring.reduce((s,r)=>s+r.amount,0);
+  const monthSpent = txSpent + recurringSpent;
+
+  document.getElementById('m-savings').textContent = `₪ ${Math.round(savingsLeft).toLocaleString()}`;
+  document.getElementById('m-spent').textContent = `₪ ${Math.round(monthSpent).toLocaleString()}`;
+  const leftEl = document.getElementById('m-left');
+  const left = totalSavings - transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  leftEl.textContent = `₪ ${Math.round(Math.abs(left)).toLocaleString()}`;
+  leftEl.className = `metric-value ${left < 0 ? 'danger' : ''}`;
+
+  // Survival — based on total savings left and daily burn rate
+  const now = new Date();
+  const dayOfMonth = now.getDate();
+  const allTimeSpent = transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  // Use 30-day rolling average for daily burn
+  const thirtyDaysAgo = new Date(now - 30*24*60*60*1000).toISOString().split('T')[0];
+  const recentSpent = transactions.filter(t=>t.type==='expense' && t.date >= thirtyDaysAgo).reduce((s,t)=>s+t.amount,0);
+  const dailyBurn = recentSpent / 30;
+  const daysUntilBroke = dailyBurn > 0 ? Math.floor(savingsLeft / dailyBurn) : 999;
+
+  const banner = document.getElementById('survival-banner');
+  const daysEl = document.getElementById('survival-days');
+
+  if (savingsLeft <= 0) {
+    banner.className = 'survival';
+    document.getElementById('survival-label').textContent = 'Savings depleted';
+    document.getElementById('survival-sub').textContent = "You've spent all your savings";
+    daysEl.innerHTML = `0<span>days</span>`;
+  } else if (daysUntilBroke > 365) {
+    banner.className = 'survival safe';
+    document.getElementById('survival-label').textContent = 'Savings runway';
+    document.getElementById('survival-sub').textContent = 'At current burn rate';
+    daysEl.innerHTML = `${Math.round(daysUntilBroke/30)}<span>mo</span>`;
+  } else if (daysUntilBroke > 60) {
+    banner.className = 'survival warn';
+    document.getElementById('survival-label').textContent = 'Savings runway';
+    document.getElementById('survival-sub').textContent = 'Running lower than ideal';
+    daysEl.innerHTML = `${daysUntilBroke}<span>days</span>`;
+  } else {
+    banner.className = 'survival';
+    document.getElementById('survival-label').textContent = 'Low savings';
+    document.getElementById('survival-sub').textContent = 'At current burn rate';
+    daysEl.innerHTML = `${Math.max(0,daysUntilBroke)}<span>days</span>`;
+  }
+
+  // Category bars
+  const cats = {};
+  txs.filter(t=>t.type==='expense').forEach(t => { cats[t.cat]=(cats[t.cat]||0)+t.amount; });
+  recurring.forEach(r => { cats[r.cat]=(cats[r.cat]||0)+r.amount; });
+  const sorted = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('cat-list').innerHTML = sorted.length === 0
+    ? '<div class="empty">No expenses this month</div>'
+    : sorted.map(([cat,amt]) => {
+        const pct = monthSpent > 0 ? Math.round(amt/monthSpent*100) : 0;
+        return `<div><div class="cat-row"><span class="cat-name">${cat}</span><span class="cat-amount">₪ ${Math.round(amt).toLocaleString()} · ${pct}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${CAT_COLORS[cat]||'#888'}"></div></div></div>`;
+      }).join('');
+
+  const recurringAsTx = recurring.map(r => ({...r, date:'monthly', type:'expense', recurring:true}));
+  renderTxList(document.getElementById('tx-list'), [...recurringAsTx, ...transactions.slice(0,5)]);
+}
+
+// ══════════════════════════════════════
+// RENDER HISTORY
+// ══════════════════════════════════════
+function renderHistory() {
+  renderTxList(document.getElementById('tx-all-list'), transactions);
+}
+
+function renderTxList(el, txs) {
+  el.innerHTML = txs.length === 0
+    ? '<div class="empty">No transactions yet</div>'
+    : txs.map(t => `
+      <div class="tx-item">
+        <div class="tx-left">
+          <div class="tx-name">${t.desc}${t.recurring?'<span class="badge badge-recurring">↻ monthly</span>':''}</div>
+          <div class="tx-meta">${t.cat} · ${t.date}</div>
+        </div>
+        <div class="tx-amount ${t.type}">${t.type==='expense'?'−':'+'} ₪ ${Math.round(t.amount).toLocaleString()}</div>
+      </div>`).join('');
+}
+
+// ══════════════════════════════════════
+// RENDER STATS
+// ══════════════════════════════════════
+function renderStats() {
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+  const textColor = isDark ? '#888' : '#aaa';
+  Chart.defaults.color = textColor;
+
+  const txs = currentMonthTxs();
+  const recurring = getRecurring();
+  const recurringTotal = recurring.reduce((s,r)=>s+r.amount,0);
+  const monthSpent = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0) + recurringTotal;
+  const savingsLeft = getTotalSavings() - transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const now = new Date();
+  const dayOfMonth = now.getDate();
+  const dailyAvg = dayOfMonth > 0 ? monthSpent / dayOfMonth : 0;
+
+  // Summary stats
+  document.getElementById('stats-summary').innerHTML = `
+    <div class="chart-title">This month at a glance</div>
+    <div class="stat-row"><span class="stat-label">Total spent this month</span><span class="stat-val" style="color:var(--danger)">₪ ${Math.round(monthSpent).toLocaleString()}</span></div>
+    <div class="stat-row"><span class="stat-label">Daily average burn</span><span class="stat-val">₪ ${Math.round(dailyAvg).toLocaleString()}</span></div>
+    <div class="stat-row"><span class="stat-label">Savings remaining</span><span class="stat-val" style="color:var(--success)">₪ ${Math.round(savingsLeft).toLocaleString()}</span></div>
+    <div class="stat-row"><span class="stat-label">Largest expense</span><span class="stat-val">${largestExpense(txs)}</span></div>
+  `;
+
+  // Line chart — cumulative spending this month day by day
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const dayLabels = Array.from({length: dayOfMonth}, (_,i) => i+1);
+  const cumulative = [];
+  let running = recurringTotal; // recurring counts from day 1
+  for (let d = 1; d <= dayOfMonth; d++) {
+    const dayStr = `${ym}-${String(d).padStart(2,'0')}`;
+    const daySpend = txs.filter(t=>t.type==='expense' && t.date===dayStr).reduce((s,t)=>s+t.amount,0);
+    running += daySpend;
+    cumulative.push(Math.round(running));
+  }
+
+  if (chartLine) chartLine.destroy();
+  chartLine = new Chart(document.getElementById('chart-line'), {
+    type: 'line',
+    data: {
+      labels: dayLabels,
+      datasets: [{
+        data: cumulative,
+        borderColor: '#e74c3c',
+        backgroundColor: 'rgba(231,76,60,0.08)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 2,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { maxTicksLimit: 8 } },
+        y: { grid: { color: gridColor }, ticks: { callback: v => `₪${v.toLocaleString()}` } }
+      }
+    }
+  });
+
+  // Donut chart — by category this month
+  const cats = {};
+  txs.filter(t=>t.type==='expense').forEach(t => { cats[t.cat]=(cats[t.cat]||0)+t.amount; });
+  recurring.forEach(r => { cats[r.cat]=(cats[r.cat]||0)+r.amount; });
+  const catEntries = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+
+  if (chartDonut) chartDonut.destroy();
+  chartDonut = new Chart(document.getElementById('chart-donut'), {
+    type: 'doughnut',
+    data: {
+      labels: catEntries.map(([c])=>c),
+      datasets: [{
+        data: catEntries.map(([,v])=>Math.round(v)),
+        backgroundColor: catEntries.map(([c])=>CAT_COLORS[c]||'#9e9e9e'),
+        borderWidth: 0,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      cutout: '62%',
+      plugins: { legend: { position: 'bottom', labels: { padding: 14, font: { family: "'DM Mono'" }, boxWidth: 12 } } }
+    }
+  });
+
+  // Bar chart — last 6 months spending
+  const months = [];
+  const monthSpends = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const ymKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const label = d.toLocaleString('default', { month: 'short' });
+    const spent = transactions.filter(t=>t.type==='expense' && t.date.startsWith(ymKey)).reduce((s,t)=>s+t.amount,0);
+    months.push(label);
+    monthSpends.push(Math.round(spent + recurringTotal));
+  }
+
+  if (chartBar) chartBar.destroy();
+  chartBar = new Chart(document.getElementById('chart-bar'), {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [{
+        data: monthSpends,
+        backgroundColor: months.map((_,i) => i === 5 ? '#e74c3c' : (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)')),
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: gridColor }, ticks: { callback: v => `₪${v.toLocaleString()}` } }
+      }
+    }
+  });
+}
+
+function largestExpense(txs) {
+  const expenses = txs.filter(t=>t.type==='expense');
+  if (!expenses.length) return '–';
+  const top = expenses.reduce((a,b) => a.amount > b.amount ? a : b);
+  return `${top.desc} (₪${Math.round(top.amount).toLocaleString()})`;
+}
+
+// ══════════════════════════════════════
+// RENDER SETTINGS
+// ══════════════════════════════════════
+function renderSettings() {
+  document.getElementById('cfg-user').textContent = googleUser?.email || '–';
+  document.getElementById('cfg-sheet-id').textContent = cfg('sheetId') || '–';
+  document.getElementById('cfg-savings').textContent = config.savings ? `₪ ${parseFloat(config.savings).toLocaleString()}` : '–';
+  renderRecurringList();
+}
+
+function renderRecurringList() {
+  const recurring = getRecurring();
+  const el = document.getElementById('recurring-list');
+  if (!el) return;
+  if (recurring.length === 0) {
+    el.innerHTML = '<div class="empty" style="padding:16px 0 8px;text-align:left;">No recurring expenses yet</div>';
+    return;
+  }
+  el.innerHTML = `<div style="margin-bottom:8px;">` +
+    recurring.map((r,i) => `
+      <div class="recurring-item" style="${i>0?'border-top:1px solid var(--border)':''}">
+        <div class="tx-left">
+          <div class="tx-name">${r.desc}<span class="badge badge-recurring">↻</span></div>
+          <div class="tx-meta">${r.cat}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-family:var(--mono);font-size:13px;color:var(--danger);">− ₪ ${Math.round(r.amount).toLocaleString()}</span>
+          <button class="del-btn" onclick="deleteRecurring(${i})">×</button>
+        </div>
+      </div>`).join('') + `</div>`;
+}
+
+function addRecurring() {
+  const desc = document.getElementById('rec-desc').value.trim();
+  const amount = parseFloat(document.getElementById('rec-amount').value);
+  const cat = document.getElementById('rec-cat').value;
+  if (!desc) { showToast('Enter a description', 'error'); return; }
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return; }
+  if (!config.recurring) config.recurring = [];
+  config.recurring.push({ desc, amount, cat });
+  localStorage.setItem('budget_config', JSON.stringify(config));
+  document.getElementById('rec-desc').value = '';
+  document.getElementById('rec-amount').value = '';
+  renderRecurringList(); renderDashboard();
+  showToast(`${desc} added ✓`, 'success');
+}
+
+function deleteRecurring(i) {
+  config.recurring.splice(i, 1);
+  localStorage.setItem('budget_config', JSON.stringify(config));
+  renderRecurringList(); renderDashboard();
+  showToast('Removed', '');
+}
+
+function updateSavings() {
+  const val = parseFloat(document.getElementById('new-savings').value);
+  if (!val || val <= 0) { showToast('Enter a valid amount', 'error'); return; }
+  config.savings = val;
+  localStorage.setItem('budget_config', JSON.stringify(config));
+  renderSettings(); renderDashboard();
+  showToast('Savings updated ✓', 'success');
+}
+
+// ══════════════════════════════════════
+// UI HELPERS
+// ══════════════════════════════════════
+function showRawPage(id) {
+  ['setup-page','signin-page','dashboard-page','history-page','stats-page','settings-page']
+    .forEach(p => document.getElementById(p).classList.toggle('active', p===id));
+}
+
+function showPage(page) {
+  ['dashboard','history','stats','settings'].forEach(p => {
+    document.getElementById(`${p}-page`).classList.toggle('active', p===page);
+  });
+  ['home','history','stats','settings'].forEach(id => {
+    const map = {home:'dashboard',history:'history',stats:'stats',settings:'settings'};
+    const btn = document.getElementById(`nav-${id}`);
+    if (btn) btn.classList.toggle('active', map[id]===page);
+  });
+  if (page==='history') renderHistory();
+  if (page==='stats') renderStats();
+  if (page==='settings') renderSettings();
+}
+
+function setMonthLabel() {
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const now = new Date();
+  document.getElementById('month-label').textContent = `${months[now.getMonth()]} ${now.getFullYear()}`;
+}
+
+function setSyncStatus(s) {
+  document.getElementById('sync-dot').className = `sync-dot ${s}`;
+  const el = document.getElementById('cfg-sync');
+  if (el) el.textContent = s==='ok'?'Synced':s==='pending'?'Syncing…':'Error';
+}
+
+function openModal() {
+  document.getElementById('tx-date').value = today();
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('tx-amount').focus(), 300);
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.getElementById('tx-amount').value='';
+  document.getElementById('tx-desc').value='';
+  document.getElementById('tx-date').value = today();
+}
+function closeModalOutside(e) { if (e.target===document.getElementById('modal-overlay')) closeModal(); }
+
+function setType(type) {
+  currentType = type;
+  document.getElementById('type-expense').className = `type-btn ${type==='expense'?'active expense':''}`;
+  document.getElementById('type-income').className = `type-btn ${type==='income'?'active income':''}`;
+  document.getElementById('tx-cat').disabled = type==='income';
+}
+
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = `toast ${type} show`;
+  setTimeout(()=>el.classList.remove('show'), 3000);
+}
+
+function syncNow() { syncFromSheet(); }
+function resetApp() { document.getElementById('confirm-overlay').classList.add('open'); }
+function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('open'); }
+function confirmReset() { localStorage.clear(); location.reload(); }
+
+init();
+</script>
+</body>
+</html>
