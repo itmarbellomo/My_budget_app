@@ -90,9 +90,10 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .tx-left { flex: 1; min-width: 0; }
 .tx-name { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
 .tx-meta { font-family: var(--mono); font-size: 10px; color: var(--dim); }
-.tx-amount { font-family: var(--mono); font-size: 13px; font-weight: 500; white-space: nowrap; }
+.tx-amount { font-family: var(--mono); font-size: 13px; font-weight: 500; white-space: nowrap; text-align: right; }
 .tx-amount.expense { color: var(--danger); }
 .tx-amount.income { color: var(--success); }
+.tx-refund-note { font-size: 9px; color: var(--success); font-family: var(--mono); margin-top: 2px; opacity: 0.9; }
 .empty { text-align: center; padding: 40px 20px; color: var(--dim); font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; }
 
 /* BADGES */
@@ -431,14 +432,16 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">Log Bit Refund</div>
-    <p style="font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.5;">Enter the amount a friend sent you for this expense. We will subtract it from the total.</p>
+    <p style="font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.5;">Enter the amount a friend sent you for this expense. We will subtract it from the total and log the refund in Google Sheets.</p>
     
     <div class="form-group">
       <label class="form-label">Original Expense Amount (₪)</label>
       <input class="form-input" id="edit-original" type="text" readonly />
     </div>
+    <p id="edit-already-received" style="font-size: 11px; color: var(--success); font-family: var(--mono); margin-bottom:10px;"></p>
+    
     <div class="form-group">
-      <label class="form-label">Amount Received (₪)</label>
+      <label class="form-label">New Amount Received (₪)</label>
       <input class="form-input" id="edit-received" type="number" placeholder="0.00" inputmode="decimal" />
     </div>
     <button class="submit-btn" id="submit-edit-btn" onclick="submitEdit()">Update Expense</button>
@@ -609,7 +612,7 @@ async function ensureSheet() {
     const exists = meta.sheets.some(s => s.properties.title === SHEET);
     if (!exists) {
       await sheetsReq('POST', ':batchUpdate', { requests:[{addSheet:{properties:{title:SHEET}}}] });
-      await sheetsReq('PUT', `/values/${SHEET}!A1:E1?valueInputOption=RAW`, { values:[['Date','Description','Amount','Category','Type']] });
+      await sheetsReq('PUT', `/values/${SHEET}!A1:G1?valueInputOption=RAW`, { values:[['Date','Description','Net Amount','Category','Type','Refund','Original Amount']] });
     }
   } catch(e) { console.warn('ensureSheet:', e); }
 }
@@ -618,11 +621,19 @@ async function syncFromSheet() {
   setSyncStatus('pending');
   try {
     await ensureSheet();
-    const data = await sheetsReq('GET', `/values/${SHEET}!A:E`);
+    // Fetch columns A:G to include Refund and Original Amount
+    const data = await sheetsReq('GET', `/values/${SHEET}!A:G`);
     transactions = (data.values || []).slice(1).map(r => ({
       id: generateId(),
-      date: r[0]||'', desc: r[1]||'', amount: parseFloat(r[2])||0, cat: r[3]||'Other', type: r[4]||'expense'
+      date: r[0]||'', 
+      desc: r[1]||'', 
+      amount: parseFloat(r[2])||0, 
+      cat: r[3]||'Other', 
+      type: r[4]||'expense',
+      refund: parseFloat(r[5]) || 0,
+      original: parseFloat(r[6]) || parseFloat(r[2]) || 0
     })).filter(t => t.date);
+    
     localStorage.setItem('budget_txs', JSON.stringify(transactions));
     setSyncStatus('ok');
     renderDashboard();
@@ -634,16 +645,17 @@ async function syncFromSheet() {
 }
 
 async function appendRow(tx) {
-  await sheetsReq('POST', `/values/${SHEET}!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
-    values: [[tx.date, tx.desc, tx.amount, tx.cat, tx.type]]
+  // Push 7 columns to Google Sheet
+  await sheetsReq('POST', `/values/${SHEET}!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+    values: [[tx.date, tx.desc, tx.amount, tx.cat, tx.type, tx.refund || 0, tx.original || tx.amount]]
   });
 }
 
 async function rewriteAllRowsToSheet() {
-  // Clears the sheet and rewrites all transactions. This is safest for edits.
-  const values = [['Date','Description','Amount','Category','Type'], ...transactions.map(t => [t.date, t.desc, t.amount, t.cat, t.type])];
-  await sheetsReq('POST', `/values/${SHEET}!A:E:clear`, {});
-  await sheetsReq('PUT', `/values/${SHEET}!A1:E?valueInputOption=RAW`, { values });
+  // Clears the sheet and rewrites all transactions. Safest way to handle random row edits.
+  const values = [['Date','Description','Net Amount','Category','Type','Refund','Original Amount'], ...transactions.map(t => [t.date, t.desc, t.amount, t.cat, t.type, t.refund || 0, t.original || t.amount])];
+  await sheetsReq('POST', `/values/${SHEET}!A:G:clear`, {});
+  await sheetsReq('PUT', `/values/${SHEET}!A1:G?valueInputOption=RAW`, { values });
 }
 
 // ══════════════════════════════════════
@@ -659,7 +671,8 @@ async function submitTransaction() {
   const btn = document.getElementById('submit-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   
-  const tx = { id: generateId(), date, desc, amount, cat, type: currentType };
+  // Set original and refund explicitly for new transactions
+  const tx = { id: generateId(), date, desc, amount, cat, type: currentType, refund: 0, original: amount };
   try {
     await appendRow(tx);
     transactions.unshift(tx);
@@ -677,7 +690,11 @@ function openEditModal(id) {
   if (!tx || tx.recurring) return; // Disallow editing virtual recurring items
   
   editingTxId = id;
-  document.getElementById('edit-original').value = tx.amount.toFixed(2);
+  const origAmount = tx.original || tx.amount;
+  const currentRefund = tx.refund || 0;
+  
+  document.getElementById('edit-original').value = origAmount.toFixed(2);
+  document.getElementById('edit-already-received').textContent = currentRefund > 0 ? `Already refunded: ₪ ${currentRefund.toFixed(2)}` : '';
   document.getElementById('edit-received').value = '';
   document.getElementById('edit-modal-overlay').classList.add('open');
 }
@@ -698,8 +715,13 @@ async function submitEdit() {
   btn.disabled = true; btn.textContent = 'Updating...';
 
   try {
-    // Update local data
-    tx.amount = parseFloat((tx.amount - receivedAmount).toFixed(2));
+    // If it's the first edit, make sure original amount is saved
+    if (!tx.original) tx.original = tx.amount;
+    
+    // Increment the refund and calculate the new net amount
+    tx.refund = (tx.refund || 0) + receivedAmount;
+    tx.amount = parseFloat((tx.original - tx.refund).toFixed(2));
+    
     localStorage.setItem('budget_txs', JSON.stringify(transactions));
 
     // Push new full state to google sheets
@@ -748,7 +770,7 @@ async function handleExcelUpload(event) {
 
       const toAdd = newTxs.filter(tx => 
         !transactions.some(existing => 
-          existing.date === tx.date && existing.desc === tx.desc && Math.abs(existing.amount - tx.amount) < 0.01
+          existing.date === tx.date && existing.desc === tx.desc && Math.abs((existing.original || existing.amount) - tx.amount) < 0.01
         )
       );
 
@@ -758,8 +780,9 @@ async function handleExcelUpload(event) {
       }
 
       btn.textContent = `Importing ${toAdd.length} items...`;
-      const values = toAdd.map(tx => [tx.date, tx.desc, tx.amount, tx.cat, tx.type]);
-      await sheetsReq('POST', `/values/${SHEET}!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, { values: values });
+      // Push 7 columns
+      const values = toAdd.map(tx => [tx.date, tx.desc, tx.amount, tx.cat, tx.type, tx.refund, tx.original]);
+      await sheetsReq('POST', `/values/${SHEET}!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, { values: values });
 
       transactions.push(...toAdd);
       transactions.sort((a,b) => b.date.localeCompare(a.date));
@@ -809,7 +832,7 @@ function parseExcelData(rows) {
     results.push({
       id: generateId(),
       date: `${fullYear}-${mm}-${dd}`,
-      desc: desc, amount: amount, cat: guessCategory(desc), type: 'expense'
+      desc: desc, amount: amount, cat: guessCategory(desc), type: 'expense', refund: 0, original: amount
     });
   }
   return results;
@@ -902,14 +925,20 @@ function renderHistory() {
 function renderTxList(el, txs) {
   el.innerHTML = txs.length === 0
     ? '<div class="empty">No transactions yet</div>'
-    : txs.map(t => `
-      <div class="tx-item ${!t.recurring ? 'clickable' : ''}" ${!t.recurring ? `onclick="openEditModal('${t.id}')"` : ''}>
-        <div class="tx-left">
-          <div class="tx-name">${t.desc}${t.recurring?'<span class="badge badge-recurring">↻ monthly</span>':''}</div>
-          <div class="tx-meta">${t.cat} · ${t.date}</div>
-        </div>
-        <div class="tx-amount ${t.type}">${t.type==='expense'?'−':'+'} ₪ ${t.amount.toFixed(2)}</div>
-      </div>`).join('');
+    : txs.map(t => {
+        const refundHTML = t.refund && t.refund > 0 ? `<div class="tx-refund-note">(₪${t.original.toFixed(2)} - ₪${t.refund.toFixed(2)})</div>` : '';
+        return `
+        <div class="tx-item ${!t.recurring ? 'clickable' : ''}" ${!t.recurring ? `onclick="openEditModal('${t.id}')"` : ''}>
+          <div class="tx-left">
+            <div class="tx-name">${t.desc}${t.recurring?'<span class="badge badge-recurring">↻ monthly</span>':''}</div>
+            <div class="tx-meta">${t.cat} · ${t.date}</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="tx-amount ${t.type}">${t.type==='expense'?'−':'+'} ₪ ${t.amount.toFixed(2)}</div>
+            ${refundHTML}
+          </div>
+        </div>`
+      }).join('');
 }
 
 // ══════════════════════════════════════
@@ -1027,8 +1056,8 @@ function renderStats() {
 function largestExpense(txs) {
   const expenses = txs.filter(t=>t.type==='expense');
   if (!expenses.length) return '–';
-  const top = expenses.reduce((a,b) => a.amount > b.amount ? a : b);
-  return `${top.desc} (₪${top.amount.toFixed(2)})`;
+  const top = expenses.reduce((a,b) => (a.original || a.amount) > (b.original || b.amount) ? a : b);
+  return `${top.desc} (₪${(top.original || top.amount).toFixed(2)})`;
 }
 
 // ══════════════════════════════════════
