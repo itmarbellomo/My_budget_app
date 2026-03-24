@@ -3,13 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<!-- <meta name="apple-mobile-web-app-capable" content="yes"> -->
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
 <title>Budget</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
-<script src="https://accounts.google.com/gsi/client" async defer onload="onGoogleLibraryLoad()"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -233,9 +232,9 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
     </div>
     <h2 class="setup-title">Sign in to continue</h2>
     <p class="setup-sub">Sign in with your Google account to securely read and write your budget spreadsheet.</p>
-    <button class="google-btn" id="signin-btn" onclick="signIn()" disabled>
+    <button class="google-btn" id="signin-btn" onclick="signIn()">
       <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-      <span id="signin-btn-label">Loading…</span>
+      <span id="signin-btn-label">Sign in with Google</span>
     </button>
     <button onclick="showRawPage('setup-page')" style="background:none;border:none;color:var(--dim);font-family:var(--mono);font-size:11px;margin-top:20px;cursor:pointer;">← Back</button>
   </div>
@@ -297,19 +296,16 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   </div>
   <div class="section">
     <div class="chart-card" id="stats-summary"></div>
-
     <div class="chart-card" id="chart-line-card">
       <div class="chart-title">Spending over time (this month)</div>
       <canvas id="chart-line" height="180"></canvas>
     </div>
-
     <div class="chart-card">
       <div class="chart-title">Category breakdown</div>
       <div style="max-width:220px;margin:0 auto;">
         <canvas id="chart-donut" height="220"></canvas>
       </div>
     </div>
-
     <div class="chart-card">
       <div class="chart-title">
         <span>Month vs month</span>
@@ -341,20 +337,17 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
       <div class="settings-row"><span class="settings-key">Total savings</span><span class="settings-val" id="cfg-savings">–</span></div>
       <div class="settings-row"><span class="settings-key">Sync status</span><span class="settings-val" id="cfg-sync">–</span></div>
     </div>
-
     <div class="form-group">
       <label class="form-label">Update total savings (₪)</label>
       <input class="form-input" id="new-savings" type="number" placeholder="50000" />
     </div>
     <button class="submit-btn" onclick="updateSavings()" style="margin-bottom:20px;">Save</button>
-
     <div class="section-title" style="margin-bottom:12px; margin-top:12px;">Import Data</div>
     <div class="form-group">
       <label class="form-label">Upload Credit Card Excel (.xlsx)</label>
       <input class="form-input" type="file" id="excel-upload" accept=".xlsx, .xls, .csv" style="padding: 9px; font-size: 13px;" />
     </div>
     <button class="submit-btn" onclick="handleExcelUpload(event)" style="margin-bottom:24px;">Import Transactions</button>
-
     <div class="section-title" style="margin-bottom:12px;">Monthly recurring expenses</div>
     <div id="recurring-list" style="margin-bottom:12px;"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
@@ -369,7 +362,6 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
       </select>
     </div>
     <button class="submit-btn" onclick="addRecurring()" style="margin-bottom:24px;">+ Add recurring</button>
-
     <button class="submit-btn" onclick="syncNow()" style="background:var(--surface2);color:var(--text);margin-bottom:10px;">↻ Sync now</button>
     <button class="submit-btn" onclick="signOut()" style="background:var(--surface2);color:var(--muted);margin-bottom:10px;">Sign out</button>
     <button class="submit-btn" onclick="resetApp()" style="background:var(--danger-dim);color:var(--danger);">Reset app</button>
@@ -377,23 +369,11 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 </div>
 
 <nav class="bottom-nav" id="bottom-nav" style="display:none;">
-  <button class="nav-btn active" id="nav-home" onclick="showPage('dashboard')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
-    Home
-  </button>
-  <button class="nav-btn" id="nav-history" onclick="showPage('history')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
-    History
-  </button>
+  <button class="nav-btn active" id="nav-home" onclick="showPage('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>Home</button>
+  <button class="nav-btn" id="nav-history" onclick="showPage('history')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>History</button>
   <button class="nav-btn add-btn" onclick="openModal()">+</button>
-  <button class="nav-btn" id="nav-stats" onclick="showPage('stats')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-    Stats
-  </button>
-  <button class="nav-btn" id="nav-settings" onclick="showPage('settings')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-    Settings
-  </button>
+  <button class="nav-btn" id="nav-stats" onclick="showPage('stats')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Stats</button>
+  <button class="nav-btn" id="nav-settings" onclick="showPage('settings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</button>
 </nav>
 
 <div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event, 'modal-overlay')">
@@ -404,26 +384,10 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
       <button class="type-btn active expense" id="type-expense" onclick="setType('expense')">− Expense</button>
       <button class="type-btn" id="type-income" onclick="setType('income')">+ Income</button>
     </div>
-    <div class="form-group">
-      <label class="form-label">Amount (₪)</label>
-      <input class="form-input" id="tx-amount" type="number" placeholder="0" inputmode="decimal" />
-    </div>
-    <div class="form-group">
-      <label class="form-label">Description</label>
-      <input class="form-input" id="tx-desc" type="text" placeholder="e.g. Shufersal, Rav-Kav…" />
-    </div>
-    <div class="form-group">
-      <label class="form-label">Category</label>
-      <select class="form-select" id="tx-cat">
-        <option>Food</option><option>Rent</option><option>Transport</option>
-        <option>Entertainment</option><option>Health</option><option>Education</option>
-        <option>Clothing</option><option>Other</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Date</label>
-      <input class="form-input" id="tx-date" type="date" />
-    </div>
+    <div class="form-group"><label class="form-label">Amount (₪)</label><input class="form-input" id="tx-amount" type="number" placeholder="0" inputmode="decimal" /></div>
+    <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="tx-desc" type="text" placeholder="e.g. Shufersal, Rav-Kav…" /></div>
+    <div class="form-group"><label class="form-label">Category</label><select class="form-select" id="tx-cat"><option>Food</option><option>Rent</option><option>Transport</option><option>Entertainment</option><option>Health</option><option>Education</option><option>Clothing</option><option>Other</option></select></div>
+    <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="tx-date" type="date" /></div>
     <button class="submit-btn" id="submit-btn" onclick="submitTransaction()">Add transaction</button>
   </div>
 </div>
@@ -433,17 +397,9 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
     <div class="modal-handle"></div>
     <div class="modal-title">Log Bit Refund</div>
     <p style="font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.5;">Enter the amount a friend sent you for this expense. We will subtract it from the total and log the refund in Google Sheets.</p>
-    
-    <div class="form-group">
-      <label class="form-label">Original Expense Amount (₪)</label>
-      <input class="form-input" id="edit-original" type="text" readonly />
-    </div>
+    <div class="form-group"><label class="form-label">Original Expense Amount (₪)</label><input class="form-input" id="edit-original" type="text" readonly /></div>
     <p id="edit-already-received" style="font-size: 11px; color: var(--success); font-family: var(--mono); margin-bottom:10px;"></p>
-    
-    <div class="form-group">
-      <label class="form-label">New Amount Received (₪)</label>
-      <input class="form-input" id="edit-received" type="number" placeholder="0.00" inputmode="decimal" />
-    </div>
+    <div class="form-group"><label class="form-label">New Amount Received (₪)</label><input class="form-input" id="edit-received" type="number" placeholder="0.00" inputmode="decimal" /></div>
     <button class="submit-btn" id="submit-edit-btn" onclick="submitEdit()">Update Expense</button>
   </div>
 </div>
@@ -464,25 +420,44 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 // ══════════════════════════════════════
 // STATE
 // ══════════════════════════════════════
-const CAT_COLORS = {
-  Food:'#4caf50', Rent:'#2196f3', Transport:'#ff9800',
-  Entertainment:'#e91e63', Health:'#00bcd4', Education:'#9c27b0',
-  Clothing:'#ff5722', Income:'#4caf50', Other:'#9e9e9e'
-};
-let config = {}, transactions = [], currentType = 'expense';
-let accessToken = null, tokenExpiry = 0, googleUser = null;
-let chartLine = null, chartDonut = null, chartBar = null;
-let editingTxId = null;
+const CAT_COLORS = { Food:'#4caf50', Rent:'#2196f3', Transport:'#ff9800', Entertainment:'#e91e63', Health:'#00bcd4', Education:'#9c27b0', Clothing:'#ff5722', Income:'#4caf50', Other:'#9e9e9e' };
+let config = {}, transactions = [], currentType = 'expense', accessToken = null, tokenExpiry = 0, googleUser = null, chartLine = null, chartDonut = null, chartBar = null, editingTxId = null;
 
 function cfg(k) { return config[k] || ''; }
 function getRecurring() { return config.recurring || []; }
 function getTotalSavings() { return parseFloat(config.savings) || 0; }
 function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+function today() { return new Date().toISOString().split('T')[0]; }
 
 // ══════════════════════════════════════
-// INIT
+// INIT & MANUAL REDIRECT OAUTH
 // ══════════════════════════════════════
-function init() {
+async function init() {
+  document.getElementById('tx-date').value = today();
+
+  // 1. Check if we just returned from Google Login (check URL for token)
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  if (params.has('access_token')) {
+    accessToken = params.get('access_token');
+    const expiresIn = parseInt(params.get('expires_in') || '3599');
+    tokenExpiry = Date.now() + (expiresIn * 1000);
+    
+    localStorage.setItem('budget_token', accessToken);
+    localStorage.setItem('budget_token_expiry', tokenExpiry);
+    
+    // Clean the ugly token out of the URL bar
+    window.history.replaceState({}, document.title, window.location.pathname);
+    
+    config = JSON.parse(localStorage.getItem('budget_config') || '{}');
+    transactions = JSON.parse(localStorage.getItem('budget_txs') || '[]');
+    
+    await fetchUserInfo(accessToken);
+    launchApp();
+    return;
+  }
+
+  // 2. Normal Startup
   config = JSON.parse(localStorage.getItem('budget_config') || '{}');
   transactions = JSON.parse(localStorage.getItem('budget_txs') || '[]');
   accessToken = localStorage.getItem('budget_token') || null;
@@ -490,28 +465,11 @@ function init() {
   const u = localStorage.getItem('budget_user');
   if (u) googleUser = JSON.parse(u);
 
-  document.getElementById('tx-date').value = today();
-
   if (!cfg('sheetId') || !cfg('clientId')) { showRawPage('setup-page'); return; }
   if (!accessToken || Date.now() > tokenExpiry) { showRawPage('signin-page'); return; }
   launchApp();
 }
 
-function today() { return new Date().toISOString().split('T')[0]; }
-
-function launchApp() {
-  showRawPage('dashboard-page');
-  document.getElementById('bottom-nav').style.display = 'flex';
-  setMonthLabel();
-  renderDashboard();
-  renderSettings();
-  if (googleUser) renderUserPill();
-  syncFromSheet();
-}
-
-// ══════════════════════════════════════
-// SETUP & GOOGLE AUTH
-// ══════════════════════════════════════
 function saveSetup() {
   const sheetId = document.getElementById('setup-sheet-id').value.trim();
   const clientId = document.getElementById('setup-client-id').value.trim();
@@ -522,30 +480,21 @@ function saveSetup() {
   showRawPage('signin-page');
 }
 
-let tokenClient = null;
-
-function onGoogleLibraryLoad() {
-  const btn = document.getElementById('signin-btn');
-  if (btn) { btn.disabled = false; }
-  document.getElementById('signin-btn-label').textContent = 'Sign in with Google';
-}
-
+// THE FIX: Manual page redirect instead of blocked popup
 function signIn() {
   if (!cfg('clientId')) { showRawPage('setup-page'); return; }
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: cfg('clientId'),
-    scope: 'https://www.googleapis.com/auth/spreadsheets',
-    callback: async (resp) => {
-      if (resp.error) { showToast(`Auth error: ${resp.error}`, 'error'); return; }
-      accessToken = resp.access_token;
-      tokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
-      localStorage.setItem('budget_token', accessToken);
-      localStorage.setItem('budget_token_expiry', tokenExpiry);
-      await fetchUserInfo(accessToken);
-      launchApp();
-    }
-  });
-  tokenClient.requestAccessToken({ prompt: 'consent' });
+  const clientId = cfg('clientId');
+  // Grabs your exact current github.io URL
+  const redirectUri = window.location.origin + window.location.pathname;
+
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${clientId}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&response_type=token` +
+    `&scope=${encodeURIComponent('https://www.googleapis.com/auth/spreadsheets')}`;
+
+  // This navigates the entire page to Google, completely bypassing the popup block!
+  window.location.href = authUrl;
 }
 
 async function fetchUserInfo(token) {
@@ -556,13 +505,7 @@ async function fetchUserInfo(token) {
   } catch(e) {}
 }
 
-function renderUserPill() {
-  if (!googleUser?.picture) return;
-  document.getElementById('user-pill').innerHTML = `<img class="user-avatar" src="${googleUser.picture}" referrerpolicy="no-referrer">`;
-}
-
 function signOut() {
-  if (window.google && accessToken) google.accounts.oauth2.revoke(accessToken, ()=>{});
   accessToken = null; tokenExpiry = 0; googleUser = null;
   ['budget_token','budget_token_expiry','budget_user'].forEach(k => localStorage.removeItem(k));
   document.getElementById('bottom-nav').style.display = 'none';
@@ -571,21 +514,22 @@ function signOut() {
 
 async function ensureFreshToken() {
   if (accessToken && Date.now() < tokenExpiry) return true;
-  return new Promise(resolve => {
-    if (!tokenClient) tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: cfg('clientId'),
-      scope: 'https://www.googleapis.com/auth/spreadsheets',
-      callback: (resp) => {
-        if (resp.error) { resolve(false); return; }
-        accessToken = resp.access_token;
-        tokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
-        localStorage.setItem('budget_token', accessToken);
-        localStorage.setItem('budget_token_expiry', tokenExpiry);
-        resolve(true);
-      }
-    });
-    tokenClient.requestAccessToken({ prompt: '' });
-  });
+  // If the 1-hour session expired, boot them back to the sign-in page safely
+  showToast('Session expired. Please sign in again.', 'error');
+  setTimeout(() => signOut(), 1500);
+  return false;
+}
+
+function launchApp() {
+  showRawPage('dashboard-page');
+  document.getElementById('bottom-nav').style.display = 'flex';
+  setMonthLabel();
+  renderDashboard();
+  renderSettings();
+  if (googleUser && googleUser.picture) {
+    document.getElementById('user-pill').innerHTML = `<img class="user-avatar" src="${googleUser.picture}" referrerpolicy="no-referrer">`;
+  }
+  syncFromSheet();
 }
 
 // ══════════════════════════════════════
@@ -595,11 +539,10 @@ const SHEET = 'Transactions';
 
 async function sheetsReq(method, path, body) {
   const ok = await ensureFreshToken();
-  if (!ok) throw new Error('Not authenticated');
+  if (!ok) throw new Error('Session expired');
   const base = `https://sheets.googleapis.com/v4/spreadsheets/${cfg('sheetId')}`;
   const r = await fetch(`${base}${path}`, {
-    method,
-    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    method, headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined
   });
   if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e?.error?.message || r.status); }
@@ -614,45 +557,33 @@ async function ensureSheet() {
       await sheetsReq('POST', ':batchUpdate', { requests:[{addSheet:{properties:{title:SHEET}}}] });
       await sheetsReq('PUT', `/values/${SHEET}!A1:G1?valueInputOption=RAW`, { values:[['Date','Description','Net Amount','Category','Type','Refund','Original Amount']] });
     }
-  } catch(e) { console.warn('ensureSheet:', e); }
+  } catch(e) {}
 }
 
 async function syncFromSheet() {
   setSyncStatus('pending');
   try {
     await ensureSheet();
-    // Fetch columns A:G to include Refund and Original Amount
     const data = await sheetsReq('GET', `/values/${SHEET}!A:G`);
     transactions = (data.values || []).slice(1).map(r => ({
-      id: generateId(),
-      date: r[0]||'', 
-      desc: r[1]||'', 
-      amount: parseFloat(r[2])||0, 
-      cat: r[3]||'Other', 
-      type: r[4]||'expense',
-      refund: parseFloat(r[5]) || 0,
-      original: parseFloat(r[6]) || parseFloat(r[2]) || 0
+      id: generateId(), date: r[0]||'', desc: r[1]||'', amount: parseFloat(r[2])||0, cat: r[3]||'Other', 
+      type: r[4]||'expense', refund: parseFloat(r[5]) || 0, original: parseFloat(r[6]) || parseFloat(r[2]) || 0
     })).filter(t => t.date);
     
     localStorage.setItem('budget_txs', JSON.stringify(transactions));
-    setSyncStatus('ok');
-    renderDashboard();
-    renderHistory();
+    setSyncStatus('ok'); renderDashboard(); renderHistory();
   } catch(e) {
-    setSyncStatus('err');
-    showToast(`Sync failed: ${e.message}`, 'error');
+    setSyncStatus('err'); showToast(`Sync failed: ${e.message}`, 'error');
   }
 }
 
 async function appendRow(tx) {
-  // Push 7 columns to Google Sheet
   await sheetsReq('POST', `/values/${SHEET}!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
     values: [[tx.date, tx.desc, tx.amount, tx.cat, tx.type, tx.refund || 0, tx.original || tx.amount]]
   });
 }
 
 async function rewriteAllRowsToSheet() {
-  // Clears the sheet and rewrites all transactions. Safest way to handle random row edits.
   const values = [['Date','Description','Net Amount','Category','Type','Refund','Original Amount'], ...transactions.map(t => [t.date, t.desc, t.amount, t.cat, t.type, t.refund || 0, t.original || t.amount])];
   await sheetsReq('POST', `/values/${SHEET}!A:G:clear`, {});
   await sheetsReq('PUT', `/values/${SHEET}!A1:G?valueInputOption=RAW`, { values });
@@ -668,172 +599,117 @@ async function submitTransaction() {
   const date = document.getElementById('tx-date').value || today();
   if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return; }
   if (!desc) { showToast('Add a description', 'error'); return; }
-  const btn = document.getElementById('submit-btn');
-  btn.disabled = true; btn.textContent = 'Saving…';
+  const btn = document.getElementById('submit-btn'); btn.disabled = true; btn.textContent = 'Saving…';
   
-  // Set original and refund explicitly for new transactions
   const tx = { id: generateId(), date, desc, amount, cat, type: currentType, refund: 0, original: amount };
   try {
     await appendRow(tx);
-    transactions.unshift(tx);
-    transactions.sort((a,b) => b.date.localeCompare(a.date));
+    transactions.unshift(tx); transactions.sort((a,b) => b.date.localeCompare(a.date));
     localStorage.setItem('budget_txs', JSON.stringify(transactions));
-    closeModal(); renderDashboard(); renderHistory();
-    showToast('Saved to Google Sheets ✓', 'success');
-  } catch(e) {
-    showToast(`Error: ${e.message}`, 'error');
-  } finally { btn.disabled = false; btn.textContent = 'Add transaction'; }
+    closeModal(); renderDashboard(); renderHistory(); showToast('Saved to Google Sheets ✓', 'success');
+  } catch(e) { showToast(`Error: ${e.message}`, 'error'); } 
+  finally { btn.disabled = false; btn.textContent = 'Add transaction'; }
 }
 
 function openEditModal(id) {
   const tx = transactions.find(t => t.id === id);
-  if (!tx || tx.recurring) return; // Disallow editing virtual recurring items
-  
+  if (!tx || tx.recurring) return; 
   editingTxId = id;
   const origAmount = tx.original || tx.amount;
   const currentRefund = tx.refund || 0;
-  
   document.getElementById('edit-original').value = origAmount.toFixed(2);
   document.getElementById('edit-already-received').textContent = currentRefund > 0 ? `Already refunded: ₪ ${currentRefund.toFixed(2)}` : '';
   document.getElementById('edit-received').value = '';
   document.getElementById('edit-modal-overlay').classList.add('open');
 }
 
-function closeEditModal() {
-  document.getElementById('edit-modal-overlay').classList.remove('open');
-  editingTxId = null;
-}
+function closeEditModal() { document.getElementById('edit-modal-overlay').classList.remove('open'); editingTxId = null; }
 
 async function submitEdit() {
   const receivedAmount = parseFloat(document.getElementById('edit-received').value);
   if (isNaN(receivedAmount) || receivedAmount <= 0) { showToast('Enter valid amount received', 'error'); return; }
-  
   const tx = transactions.find(t => t.id === editingTxId);
   if (!tx) return;
-
-  const btn = document.getElementById('submit-edit-btn');
-  btn.disabled = true; btn.textContent = 'Updating...';
+  const btn = document.getElementById('submit-edit-btn'); btn.disabled = true; btn.textContent = 'Updating...';
 
   try {
-    // If it's the first edit, make sure original amount is saved
     if (!tx.original) tx.original = tx.amount;
-    
-    // Increment the refund and calculate the new net amount
     tx.refund = (tx.refund || 0) + receivedAmount;
     tx.amount = parseFloat((tx.original - tx.refund).toFixed(2));
-    
     localStorage.setItem('budget_txs', JSON.stringify(transactions));
-
-    // Push new full state to google sheets
     await rewriteAllRowsToSheet();
-    
-    closeEditModal();
-    renderDashboard();
+    closeEditModal(); renderDashboard();
     if (document.getElementById('history-page').classList.contains('active')) renderHistory();
     if (document.getElementById('stats-page').classList.contains('active')) renderStats();
-    
     showToast('Expense updated successfully ✓', 'success');
-  } catch (e) {
-    showToast(`Error updating: ${e.message}`, 'error');
-  } finally {
-    btn.disabled = false; btn.textContent = 'Update Expense';
-  }
+  } catch (e) { showToast(`Error updating: ${e.message}`, 'error'); } 
+  finally { btn.disabled = false; btn.textContent = 'Update Expense'; }
 }
 
 // ══════════════════════════════════════
-// EXCEL IMPORT LOGIC (SheetJS)
+// EXCEL & CSV IMPORT LOGIC (Unified)
 // ══════════════════════════════════════
 async function handleExcelUpload(event) {
   const fileInput = document.getElementById('excel-upload');
   if (!fileInput.files.length) { showToast('Please select a file', 'error'); return; }
-
-  const btn = event.target;
-  btn.disabled = true; btn.textContent = 'Reading Excel...';
-
+  const btn = event.target; btn.disabled = true; btn.textContent = 'Reading File...';
   const file = fileInput.files[0];
+  const isCSV = file.name.toLowerCase().endsWith('.csv');
   const reader = new FileReader();
 
   reader.onload = async (e) => {
     try {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-      const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
+      let rows = [];
+      if (isCSV) {
+        const text = e.target.result;
+        rows = text.split('\n').map(line => line.split(',').map(s => s.trim().replace(/^"|"$/g, '')));
+      } else {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, raw: false });
+      }
       
-      const newTxs = parseExcelData(rows);
+      const newTxs = parseImportedRows(rows);
+      if (!newTxs.length) { showToast('No valid transactions found', 'error'); btn.disabled = false; btn.textContent = 'Import Transactions'; return; }
 
-      if (!newTxs.length) {
-        showToast('No valid transactions found', 'error');
-        btn.disabled = false; btn.textContent = 'Import Transactions'; return;
-      }
-
-      const toAdd = newTxs.filter(tx => 
-        !transactions.some(existing => 
-          existing.date === tx.date && existing.desc === tx.desc && Math.abs((existing.original || existing.amount) - tx.amount) < 0.01
-        )
-      );
-
-      if (!toAdd.length) {
-        showToast('All transactions already synced', 'success');
-        fileInput.value = ''; btn.disabled = false; btn.textContent = 'Import Transactions'; return;
-      }
+      const toAdd = newTxs.filter(tx => !transactions.some(existing => existing.date === tx.date && existing.desc === tx.desc && Math.abs((existing.original || existing.amount) - tx.amount) < 0.01));
+      if (!toAdd.length) { showToast('All transactions already synced', 'success'); fileInput.value = ''; btn.disabled = false; btn.textContent = 'Import Transactions'; return; }
 
       btn.textContent = `Importing ${toAdd.length} items...`;
-      // Push 7 columns
-      const values = toAdd.map(tx => [tx.date, tx.desc, tx.amount, tx.cat, tx.type, tx.refund, tx.original]);
+      const values = toAdd.map(tx => [tx.date, tx.desc, tx.amount, tx.cat, tx.type, tx.refund || 0, tx.original || tx.amount]);
       await sheetsReq('POST', `/values/${SHEET}!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, { values: values });
 
-      transactions.push(...toAdd);
-      transactions.sort((a,b) => b.date.localeCompare(a.date));
+      transactions.push(...toAdd); transactions.sort((a,b) => b.date.localeCompare(a.date));
       localStorage.setItem('budget_txs', JSON.stringify(transactions));
-      
-      renderDashboard();
-      if(document.getElementById('history-page').classList.contains('active')) renderHistory();
-      
-      showToast(`${toAdd.length} expenses imported ✓`, 'success');
-      fileInput.value = ''; 
-    } catch (err) {
-      showToast(`Import error: Check console`, 'error');
-    } finally {
-      btn.disabled = false; btn.textContent = 'Import Transactions';
-    }
+      renderDashboard(); if(document.getElementById('history-page').classList.contains('active')) renderHistory();
+      showToast(`${toAdd.length} expenses imported ✓`, 'success'); fileInput.value = ''; 
+    } catch (err) { showToast(`Import error: ${err.message}`, 'error'); } 
+    finally { btn.disabled = false; btn.textContent = 'Import Transactions'; }
   };
-  reader.readAsArrayBuffer(file);
+  if (isCSV) { reader.readAsText(file, 'windows-1255'); } else { reader.readAsArrayBuffer(file); }
 }
 
-function parseExcelData(rows) {
+function parseImportedRows(rows) {
   let startIndex = -1;
   for (let i = 0; i < rows.length; i++) {
-    if (rows[i] && rows[i].length > 1 && String(rows[i][0]).includes('תאריך רכישה') && String(rows[i][1]).includes('שם בית עסק')) {
-      startIndex = i + 1; break;
-    }
+    if (rows[i] && rows[i].length > 1 && String(rows[i][0] || '').includes('תאריך רכישה') && String(rows[i][1] || '').includes('שם בית עסק')) { startIndex = i + 1; break; }
   }
-
-  if (startIndex === -1) return [];
+  if (startIndex === -1) throw new Error("Could not find table headers. Check file format.");
 
   const results = [];
   for (let i = startIndex; i < rows.length; i++) {
     const row = rows[i];
     if (!row || !row.length || !row[0] || String(row[0]).includes('סה"כ')) continue;
-
     const datePart = String(row[0]).trim(); 
     if (!/^\d{2}\.\d{2}\.\d{2}$/.test(datePart)) continue;
-
     const [dd, mm, yy] = datePart.split('.');
     const fullYear = parseInt(yy) > 50 ? `19${yy}` : `20${yy}`;
-    
     const desc = String(row[1] || '').trim();
     let amountStr = String(row[4] || '0').replace(/[^\d.-]/g, '');
     const amount = parseFloat(amountStr); 
-
     if (isNaN(amount) || amount <= 0) continue;
 
-    results.push({
-      id: generateId(),
-      date: `${fullYear}-${mm}-${dd}`,
-      desc: desc, amount: amount, cat: guessCategory(desc), type: 'expense', refund: 0, original: amount
-    });
+    results.push({ id: generateId(), date: `${fullYear}-${mm}-${dd}`, desc: desc, amount: amount, cat: guessCategory(desc), type: 'expense', refund: 0, original: amount });
   }
   return results;
 }
@@ -850,283 +726,93 @@ function guessCategory(desc) {
 }
 
 // ══════════════════════════════════════
-// RENDER DASHBOARD
+// UI RENDERING
 // ══════════════════════════════════════
 function currentMonthTxs() {
-  const now = new Date();
-  const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const now = new Date(); const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   return transactions.filter(t => t.date.startsWith(ym));
 }
 
 function renderDashboard() {
-  const txs = currentMonthTxs();
-  const recurring = getRecurring();
-  const expenses = transactions.filter(t=>t.type==='expense');
-  
-  const totalSavings = getTotalSavings();
-  const totalSpentEver = expenses.reduce((s,t)=>s+t.amount,0);
-  const recurringTotal = recurring.reduce((s,r)=>s+r.amount,0);
-  
-  const savingsLeft = totalSavings - totalSpentEver;
-
-  const txSpent = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  const monthSpent = txSpent + recurringTotal;
+  const txs = currentMonthTxs(); const recurring = getRecurring(); const expenses = transactions.filter(t=>t.type==='expense');
+  const totalSavings = getTotalSavings(); const totalSpentEver = expenses.reduce((s,t)=>s+t.amount,0);
+  const recurringTotal = recurring.reduce((s,r)=>s+r.amount,0); const savingsLeft = totalSavings - totalSpentEver;
+  const monthSpent = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0) + recurringTotal;
 
   document.getElementById('m-savings').textContent = `₪ ${Math.round(savingsLeft).toLocaleString()}`;
   document.getElementById('m-spent').textContent = `₪ ${Math.round(monthSpent).toLocaleString()}`;
-  const leftEl = document.getElementById('m-left');
-  leftEl.textContent = `₪ ${Math.round(Math.abs(savingsLeft)).toLocaleString()}`;
-  leftEl.className = `metric-value ${savingsLeft < 0 ? 'danger' : ''}`;
+  const leftEl = document.getElementById('m-left'); leftEl.textContent = `₪ ${Math.round(Math.abs(savingsLeft)).toLocaleString()}`; leftEl.className = `metric-value ${savingsLeft < 0 ? 'danger' : ''}`;
 
-  const uniqueMonths = new Set(expenses.map(t => t.date.substring(0, 7)));
-  const monthsCount = Math.max(1, uniqueMonths.size);
-  const avgMonthlyBurn = (totalSpentEver / monthsCount) + recurringTotal;
-  const monthsUntilBroke = avgMonthlyBurn > 0 ? (savingsLeft / avgMonthlyBurn) : 999;
+  const uniqueMonths = new Set(expenses.map(t => t.date.substring(0, 7))); const monthsCount = Math.max(1, uniqueMonths.size);
+  const avgMonthlyBurn = (totalSpentEver / monthsCount) + recurringTotal; const monthsUntilBroke = avgMonthlyBurn > 0 ? (savingsLeft / avgMonthlyBurn) : 999;
 
-  const banner = document.getElementById('survival-banner');
-  const daysEl = document.getElementById('survival-days');
+  const banner = document.getElementById('survival-banner'); const daysEl = document.getElementById('survival-days');
+  if (savingsLeft <= 0) { banner.className = 'survival'; document.getElementById('survival-label').textContent = 'Savings depleted'; document.getElementById('survival-sub').textContent = "You've spent all your savings"; daysEl.innerHTML = `0<span>days</span>`; } 
+  else if (monthsUntilBroke > 12) { banner.className = 'survival safe'; document.getElementById('survival-label').textContent = 'Savings runway'; document.getElementById('survival-sub').textContent = 'Based on avg monthly spend'; daysEl.innerHTML = `${Math.round(monthsUntilBroke)}<span>mo</span>`; } 
+  else if (monthsUntilBroke > 2) { banner.className = 'survival warn'; document.getElementById('survival-label').textContent = 'Savings runway'; document.getElementById('survival-sub').textContent = 'Running lower than ideal'; daysEl.innerHTML = `${Math.round(monthsUntilBroke)}<span>mo</span>`; } 
+  else { banner.className = 'survival'; document.getElementById('survival-label').textContent = 'Low savings'; document.getElementById('survival-sub').textContent = 'Based on avg monthly spend'; daysEl.innerHTML = `${Math.round(monthsUntilBroke * 30)}<span>days</span>`; }
 
-  if (savingsLeft <= 0) {
-    banner.className = 'survival'; document.getElementById('survival-label').textContent = 'Savings depleted';
-    document.getElementById('survival-sub').textContent = "You've spent all your savings"; daysEl.innerHTML = `0<span>days</span>`;
-  } else if (monthsUntilBroke > 12) {
-    banner.className = 'survival safe'; document.getElementById('survival-label').textContent = 'Savings runway';
-    document.getElementById('survival-sub').textContent = 'Based on avg monthly spend'; daysEl.innerHTML = `${Math.round(monthsUntilBroke)}<span>mo</span>`;
-  } else if (monthsUntilBroke > 2) {
-    banner.className = 'survival warn'; document.getElementById('survival-label').textContent = 'Savings runway';
-    document.getElementById('survival-sub').textContent = 'Running lower than ideal'; daysEl.innerHTML = `${Math.round(monthsUntilBroke)}<span>mo</span>`;
-  } else {
-    banner.className = 'survival'; document.getElementById('survival-label').textContent = 'Low savings';
-    document.getElementById('survival-sub').textContent = 'Based on avg monthly spend'; daysEl.innerHTML = `${Math.round(monthsUntilBroke * 30)}<span>days</span>`;
-  }
-
-  const cats = {};
-  txs.filter(t=>t.type==='expense').forEach(t => { cats[t.cat]=(cats[t.cat]||0)+t.amount; });
-  recurring.forEach(r => { cats[r.cat]=(cats[r.cat]||0)+r.amount; });
+  const cats = {}; txs.filter(t=>t.type==='expense').forEach(t => { cats[t.cat]=(cats[t.cat]||0)+t.amount; }); recurring.forEach(r => { cats[r.cat]=(cats[r.cat]||0)+r.amount; });
   const sorted = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
-  document.getElementById('cat-list').innerHTML = sorted.length === 0
-    ? '<div class="empty">No expenses this month</div>'
-    : sorted.map(([cat,amt]) => {
-        const pct = monthSpent > 0 ? Math.round(amt/monthSpent*100) : 0;
-        return `<div><div class="cat-row"><span class="cat-name">${cat}</span><span class="cat-amount">₪ ${amt.toFixed(2)} · ${pct}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${CAT_COLORS[cat]||'#888'}"></div></div></div>`;
-      }).join('');
+  document.getElementById('cat-list').innerHTML = sorted.length === 0 ? '<div class="empty">No expenses this month</div>' : sorted.map(([cat,amt]) => { const pct = monthSpent > 0 ? Math.round(amt/monthSpent*100) : 0; return `<div><div class="cat-row"><span class="cat-name">${cat}</span><span class="cat-amount">₪ ${amt.toFixed(2)} · ${pct}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${CAT_COLORS[cat]||'#888'}"></div></div></div>`; }).join('');
 
   const recurringAsTx = recurring.map(r => ({...r, date:'monthly', type:'expense', recurring:true}));
   renderTxList(document.getElementById('tx-list'), [...recurringAsTx, ...transactions.slice(0,5)]);
 }
 
-// ══════════════════════════════════════
-// RENDER HISTORY
-// ══════════════════════════════════════
-function renderHistory() {
-  renderTxList(document.getElementById('tx-all-list'), transactions);
-}
+function renderHistory() { renderTxList(document.getElementById('tx-all-list'), transactions); }
 
 function renderTxList(el, txs) {
-  el.innerHTML = txs.length === 0
-    ? '<div class="empty">No transactions yet</div>'
-    : txs.map(t => {
-        const refundHTML = t.refund && t.refund > 0 ? `<div class="tx-refund-note">(₪${t.original.toFixed(2)} - ₪${t.refund.toFixed(2)})</div>` : '';
-        return `
-        <div class="tx-item ${!t.recurring ? 'clickable' : ''}" ${!t.recurring ? `onclick="openEditModal('${t.id}')"` : ''}>
-          <div class="tx-left">
-            <div class="tx-name">${t.desc}${t.recurring?'<span class="badge badge-recurring">↻ monthly</span>':''}</div>
-            <div class="tx-meta">${t.cat} · ${t.date}</div>
-          </div>
-          <div style="text-align: right;">
-            <div class="tx-amount ${t.type}">${t.type==='expense'?'−':'+'} ₪ ${t.amount.toFixed(2)}</div>
-            ${refundHTML}
-          </div>
-        </div>`
-      }).join('');
+  el.innerHTML = txs.length === 0 ? '<div class="empty">No transactions yet</div>' : txs.map(t => {
+    const refundHTML = t.refund && t.refund > 0 ? `<div class="tx-refund-note">(₪${t.original.toFixed(2)} - ₪${t.refund.toFixed(2)})</div>` : '';
+    return `<div class="tx-item ${!t.recurring ? 'clickable' : ''}" ${!t.recurring ? `onclick="openEditModal('${t.id}')"` : ''}><div class="tx-left"><div class="tx-name">${t.desc}${t.recurring?'<span class="badge badge-recurring">↻ monthly</span>':''}</div><div class="tx-meta">${t.cat} · ${t.date}</div></div><div style="text-align: right;"><div class="tx-amount ${t.type}">${t.type==='expense'?'−':'+'} ₪ ${t.amount.toFixed(2)}</div>${refundHTML}</div></div>`
+  }).join('');
 }
 
-// ══════════════════════════════════════
-// RENDER STATS (Includes Stacked Chart)
-// ══════════════════════════════════════
 function renderStats() {
-  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
-  const textColor = isDark ? '#888' : '#aaa';
-  Chart.defaults.color = textColor;
-
-  const tf = document.getElementById('stats-timeframe')?.value || 'all';
-  const now = new Date();
-  let startDate = new Date(now.getFullYear(), now.getMonth() - parseInt(tf) + 1, 1);
-  if (tf === 'all') startDate = new Date(2000, 0, 1);
-
-  const txs = transactions.filter(t => new Date(t.date) >= startDate);
-  const recurring = getRecurring();
-  const recurringTotal = recurring.reduce((s,r)=>s+r.amount,0);
-  
-  const uniqueFilteredMonths = new Set(txs.map(t => t.date.substring(0, 7))).size;
-  const monthsInRange = Math.max(1, tf === 'all' ? uniqueFilteredMonths : parseInt(tf));
-  const totalRecurringInRange = recurringTotal * monthsInRange;
-
-  const rangeSpent = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0) + totalRecurringInRange;
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches; const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'; Chart.defaults.color = isDark ? '#888' : '#aaa';
+  const tf = document.getElementById('stats-timeframe')?.value || 'all'; const now = new Date(); let startDate = new Date(now.getFullYear(), now.getMonth() - parseInt(tf) + 1, 1); if (tf === 'all') startDate = new Date(2000, 0, 1);
+  const txs = transactions.filter(t => new Date(t.date) >= startDate); const recurring = getRecurring(); const recurringTotal = recurring.reduce((s,r)=>s+r.amount,0);
+  const monthsInRange = Math.max(1, tf === 'all' ? new Set(txs.map(t => t.date.substring(0, 7))).size : parseInt(tf));
+  const rangeSpent = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0) + (recurringTotal * monthsInRange);
   const savingsLeft = getTotalSavings() - transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   
-  document.getElementById('stats-summary').innerHTML = `
-    <div class="chart-title">${tf === '1' ? 'This month' : 'Selected period'} at a glance</div>
-    <div class="stat-row"><span class="stat-label">Total spent</span><span class="stat-val" style="color:var(--danger)">₪ ${Math.round(rangeSpent).toLocaleString()}</span></div>
-    <div class="stat-row"><span class="stat-label">Average monthly</span><span class="stat-val">₪ ${Math.round(rangeSpent / monthsInRange).toLocaleString()}</span></div>
-    <div class="stat-row"><span class="stat-label">Savings remaining</span><span class="stat-val" style="color:var(--success)">₪ ${Math.round(savingsLeft).toLocaleString()}</span></div>
-    <div class="stat-row"><span class="stat-label">Largest expense</span><span class="stat-val">${largestExpense(txs)}</span></div>
-  `;
+  document.getElementById('stats-summary').innerHTML = `<div class="chart-title">${tf === '1' ? 'This month' : 'Selected period'} at a glance</div><div class="stat-row"><span class="stat-label">Total spent</span><span class="stat-val" style="color:var(--danger)">₪ ${Math.round(rangeSpent).toLocaleString()}</span></div><div class="stat-row"><span class="stat-label">Average monthly</span><span class="stat-val">₪ ${Math.round(rangeSpent / monthsInRange).toLocaleString()}</span></div><div class="stat-row"><span class="stat-label">Savings remaining</span><span class="stat-val" style="color:var(--success)">₪ ${Math.round(savingsLeft).toLocaleString()}</span></div><div class="stat-row"><span class="stat-label">Largest expense</span><span class="stat-val">${largestExpense(txs)}</span></div>`;
 
   const lineCard = document.getElementById('chart-line-card');
   if (tf === '1') {
-    lineCard.style.display = 'block';
-    const dayOfMonth = now.getDate();
-    const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    const dayLabels = Array.from({length: dayOfMonth}, (_,i) => i+1);
-    const cumulative = []; let running = recurringTotal; 
-    for (let d = 1; d <= dayOfMonth; d++) {
-      const dayStr = `${ym}-${String(d).padStart(2,'0')}`;
-      running += txs.filter(t=>t.type==='expense' && t.date===dayStr).reduce((s,t)=>s+t.amount,0);
-      cumulative.push(Math.round(running));
-    }
-    if (chartLine) chartLine.destroy();
-    chartLine = new Chart(document.getElementById('chart-line'), {
-      type: 'line',
-      data: { labels: dayLabels, datasets: [{ data: cumulative, borderColor: '#e74c3c', backgroundColor: 'rgba(231,76,60,0.08)', fill: true, tension: 0.4, pointRadius: 2, borderWidth: 2 }] },
-      options: { plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridColor }, ticks: { maxTicksLimit: 8 } }, y: { grid: { color: gridColor }, ticks: { callback: v => `₪${v.toLocaleString()}` } } } }
-    });
+    lineCard.style.display = 'block'; const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`; const dayLabels = Array.from({length: now.getDate()}, (_,i) => i+1); const cumulative = []; let running = recurringTotal; 
+    for (let d = 1; d <= now.getDate(); d++) { running += txs.filter(t=>t.type==='expense' && t.date===`${ym}-${String(d).padStart(2,'0')}`).reduce((s,t)=>s+t.amount,0); cumulative.push(Math.round(running)); }
+    if (chartLine) chartLine.destroy(); chartLine = new Chart(document.getElementById('chart-line'), { type: 'line', data: { labels: dayLabels, datasets: [{ data: cumulative, borderColor: '#e74c3c', backgroundColor: 'rgba(231,76,60,0.08)', fill: true, tension: 0.4, pointRadius: 2, borderWidth: 2 }] }, options: { plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridColor }, ticks: { maxTicksLimit: 8 } }, y: { grid: { color: gridColor }, ticks: { callback: v => `₪${v.toLocaleString()}` } } } } });
   } else { lineCard.style.display = 'none'; }
 
-  const cats = {};
-  txs.filter(t=>t.type==='expense').forEach(t => { cats[t.cat]=(cats[t.cat]||0)+t.amount; });
-  recurring.forEach(r => { cats[r.cat]=(cats[r.cat]||0) + (r.amount * monthsInRange); });
-  const catEntries = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  const cats = {}; txs.filter(t=>t.type==='expense').forEach(t => { cats[t.cat]=(cats[t.cat]||0)+t.amount; }); recurring.forEach(r => { cats[r.cat]=(cats[r.cat]||0) + (r.amount * monthsInRange); }); const catEntries = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  if (chartDonut) chartDonut.destroy(); chartDonut = new Chart(document.getElementById('chart-donut'), { type: 'doughnut', data: { labels: catEntries.map(([c])=>c), datasets: [{ data: catEntries.map(([,v])=>Math.round(v)), backgroundColor: catEntries.map(([c])=>CAT_COLORS[c]||'#9e9e9e'), borderWidth: 0, hoverOffset: 6 }] }, options: { cutout: '62%', plugins: { legend: { position: 'bottom', labels: { padding: 14, font: { family: "'DM Mono'" }, boxWidth: 12 } } } } });
 
-  if (chartDonut) chartDonut.destroy();
-  chartDonut = new Chart(document.getElementById('chart-donut'), {
-    type: 'doughnut',
-    data: { labels: catEntries.map(([c])=>c), datasets: [{ data: catEntries.map(([,v])=>Math.round(v)), backgroundColor: catEntries.map(([c])=>CAT_COLORS[c]||'#9e9e9e'), borderWidth: 0, hoverOffset: 6 }] },
-    options: { cutout: '62%', plugins: { legend: { position: 'bottom', labels: { padding: 14, font: { family: "'DM Mono'" }, boxWidth: 12 } } } }
-  });
-
-  // Stacked Bar Chart Logic
-  const catFilter = document.getElementById('stats-cat-filter').value;
-  const barMonths = [];
-  const barDatasets = [];
-
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    barMonths.push({
-      label: d.toLocaleString('default', { month: 'short' }),
-      prefix: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
-    });
-  }
-
-  const categoriesToChart = catFilter === 'all' ? Object.keys(CAT_COLORS) : [catFilter];
-
-  categoriesToChart.forEach(cat => {
+  const catFilter = document.getElementById('stats-cat-filter').value; const barMonths = []; const barDatasets = [];
+  for (let i = 5; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); barMonths.push({ label: d.toLocaleString('default', { month: 'short' }), prefix: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` }); }
+  (catFilter === 'all' ? Object.keys(CAT_COLORS) : [catFilter]).forEach(cat => {
     if (cat === 'Income') return;
-    const dataPoints = barMonths.map(m => {
-      const spent = transactions.filter(t => t.type === 'expense' && t.cat === cat && t.date.startsWith(m.prefix)).reduce((s,t) => s + t.amount, 0);
-      const recSpent = recurring.filter(r => r.cat === cat).reduce((s,r) => s + r.amount, 0);
-      return Math.round(spent + recSpent);
-    });
-    
-    if (dataPoints.some(v => v > 0)) {
-      barDatasets.push({
-        label: cat,
-        data: dataPoints,
-        backgroundColor: CAT_COLORS[cat] || '#9e9e9e',
-        borderRadius: catFilter === 'all' ? 0 : 6 // round corners only if not stacked
-      });
-    }
+    const dataPoints = barMonths.map(m => Math.round(transactions.filter(t => t.type === 'expense' && t.cat === cat && t.date.startsWith(m.prefix)).reduce((s,t) => s + t.amount, 0) + recurring.filter(r => r.cat === cat).reduce((s,r) => s + r.amount, 0)));
+    if (dataPoints.some(v => v > 0)) { barDatasets.push({ label: cat, data: dataPoints, backgroundColor: CAT_COLORS[cat] || '#9e9e9e', borderRadius: catFilter === 'all' ? 0 : 6 }); }
   });
-
-  if (chartBar) chartBar.destroy();
-  chartBar = new Chart(document.getElementById('chart-bar'), {
-    type: 'bar',
-    data: { labels: barMonths.map(m => m.label), datasets: barDatasets },
-    options: { 
-      plugins: { legend: { display: catFilter === 'all', position: 'bottom', labels: { boxWidth: 10, font: { size: 10, family: "'DM Mono'" } } } }, 
-      scales: { 
-        x: { stacked: catFilter === 'all', grid: { display: false } }, 
-        y: { stacked: catFilter === 'all', grid: { color: gridColor }, ticks: { callback: v => `₪${v.toLocaleString()}` } } 
-      } 
-    }
-  });
+  if (chartBar) chartBar.destroy(); chartBar = new Chart(document.getElementById('chart-bar'), { type: 'bar', data: { labels: barMonths.map(m => m.label), datasets: barDatasets }, options: { plugins: { legend: { display: catFilter === 'all', position: 'bottom', labels: { boxWidth: 10, font: { size: 10, family: "'DM Mono'" } } } }, scales: { x: { stacked: catFilter === 'all', grid: { display: false } }, y: { stacked: catFilter === 'all', grid: { color: gridColor }, ticks: { callback: v => `₪${v.toLocaleString()}` } } } } });
 }
 
-function largestExpense(txs) {
-  const expenses = txs.filter(t=>t.type==='expense');
-  if (!expenses.length) return '–';
-  const top = expenses.reduce((a,b) => (a.original || a.amount) > (b.original || b.amount) ? a : b);
-  return `${top.desc} (₪${(top.original || top.amount).toFixed(2)})`;
-}
+function largestExpense(txs) { const expenses = txs.filter(t=>t.type==='expense'); if (!expenses.length) return '–'; const top = expenses.reduce((a,b) => (a.original || a.amount) > (b.original || b.amount) ? a : b); return `${top.desc} (₪${(top.original || top.amount).toFixed(2)})`; }
 
 // ══════════════════════════════════════
-// RENDER SETTINGS & UI
+// SETTINGS & HELPERS
 // ══════════════════════════════════════
-function renderSettings() {
-  document.getElementById('cfg-user').textContent = googleUser?.email || '–';
-  document.getElementById('cfg-sheet-id').textContent = cfg('sheetId') || '–';
-  document.getElementById('cfg-savings').textContent = config.savings ? `₪ ${parseFloat(config.savings).toLocaleString()}` : '–';
-  renderRecurringList();
-}
-
-function renderRecurringList() {
-  const recurring = getRecurring();
-  const el = document.getElementById('recurring-list');
-  if (!el) return;
-  if (recurring.length === 0) { el.innerHTML = '<div class="empty" style="padding:16px 0 8px;text-align:left;">No recurring expenses yet</div>'; return; }
-  el.innerHTML = `<div style="margin-bottom:8px;">` + recurring.map((r,i) => `
-    <div class="recurring-item" style="${i>0?'border-top:1px solid var(--border)':''}">
-      <div class="tx-left"><div class="tx-name">${r.desc}<span class="badge badge-recurring">↻</span></div><div class="tx-meta">${r.cat}</div></div>
-      <div style="display:flex;align-items:center;gap:10px;"><span style="font-family:var(--mono);font-size:13px;color:var(--danger);">− ₪ ${r.amount.toFixed(2)}</span><button class="del-btn" onclick="deleteRecurring(${i})">×</button></div>
-    </div>`).join('') + `</div>`;
-}
-
-function addRecurring() {
-  const desc = document.getElementById('rec-desc').value.trim();
-  const amount = parseFloat(document.getElementById('rec-amount').value);
-  const cat = document.getElementById('rec-cat').value;
-  if (!desc) { showToast('Enter a description', 'error'); return; }
-  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return; }
-  if (!config.recurring) config.recurring = [];
-  config.recurring.push({ desc, amount, cat });
-  localStorage.setItem('budget_config', JSON.stringify(config));
-  document.getElementById('rec-desc').value = ''; document.getElementById('rec-amount').value = '';
-  renderRecurringList(); renderDashboard(); showToast(`${desc} added ✓`, 'success');
-}
-
-function deleteRecurring(i) {
-  config.recurring.splice(i, 1); localStorage.setItem('budget_config', JSON.stringify(config));
-  renderRecurringList(); renderDashboard(); showToast('Removed', '');
-}
-
-function updateSavings() {
-  const val = parseFloat(document.getElementById('new-savings').value);
-  if (!val || val <= 0) { showToast('Enter a valid amount', 'error'); return; }
-  config.savings = val; localStorage.setItem('budget_config', JSON.stringify(config));
-  renderSettings(); renderDashboard(); showToast('Savings updated ✓', 'success');
-}
-
+function renderSettings() { document.getElementById('cfg-user').textContent = googleUser?.email || '–'; document.getElementById('cfg-sheet-id').textContent = cfg('sheetId') || '–'; document.getElementById('cfg-savings').textContent = config.savings ? `₪ ${parseFloat(config.savings).toLocaleString()}` : '–'; renderRecurringList(); }
+function renderRecurringList() { const el = document.getElementById('recurring-list'); if (!el) return; if (getRecurring().length === 0) { el.innerHTML = '<div class="empty" style="padding:16px 0 8px;text-align:left;">No recurring expenses yet</div>'; return; } el.innerHTML = `<div style="margin-bottom:8px;">` + getRecurring().map((r,i) => `<div class="recurring-item" style="${i>0?'border-top:1px solid var(--border)':''}"><div class="tx-left"><div class="tx-name">${r.desc}<span class="badge badge-recurring">↻</span></div><div class="tx-meta">${r.cat}</div></div><div style="display:flex;align-items:center;gap:10px;"><span style="font-family:var(--mono);font-size:13px;color:var(--danger);">− ₪ ${r.amount.toFixed(2)}</span><button class="del-btn" onclick="deleteRecurring(${i})">×</button></div></div>`).join('') + `</div>`; }
+function addRecurring() { const desc = document.getElementById('rec-desc').value.trim(); const amount = parseFloat(document.getElementById('rec-amount').value); const cat = document.getElementById('rec-cat').value; if (!desc || !amount || amount <= 0) return; if (!config.recurring) config.recurring = []; config.recurring.push({ desc, amount, cat }); localStorage.setItem('budget_config', JSON.stringify(config)); document.getElementById('rec-desc').value = ''; document.getElementById('rec-amount').value = ''; renderRecurringList(); renderDashboard(); showToast(`${desc} added ✓`, 'success'); }
+function deleteRecurring(i) { config.recurring.splice(i, 1); localStorage.setItem('budget_config', JSON.stringify(config)); renderRecurringList(); renderDashboard(); showToast('Removed', ''); }
+function updateSavings() { const val = parseFloat(document.getElementById('new-savings').value); if (!val || val <= 0) return; config.savings = val; localStorage.setItem('budget_config', JSON.stringify(config)); renderSettings(); renderDashboard(); showToast('Savings updated ✓', 'success'); }
 function showRawPage(id) { ['setup-page','signin-page','dashboard-page','history-page','stats-page','settings-page'].forEach(p => document.getElementById(p).classList.toggle('active', p===id)); }
-function showPage(page) {
-  ['dashboard','history','stats','settings'].forEach(p => document.getElementById(`${p}-page`).classList.toggle('active', p===page));
-  ['home','history','stats','settings'].forEach(id => {
-    const map = {home:'dashboard',history:'history',stats:'stats',settings:'settings'};
-    const btn = document.getElementById(`nav-${id}`); if (btn) btn.classList.toggle('active', map[id]===page);
-  });
-  if (page==='history') renderHistory(); if (page==='stats') renderStats(); if (page==='settings') renderSettings();
-}
-
-function setMonthLabel() {
-  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  document.getElementById('month-label').textContent = `${months[new Date().getMonth()]} ${new Date().getFullYear()}`;
-}
-
-function setSyncStatus(s) {
-  document.getElementById('sync-dot').className = `sync-dot ${s}`;
-  const el = document.getElementById('cfg-sync'); if (el) el.textContent = s==='ok'?'Synced':s==='pending'?'Syncing…':'Error';
-}
-
+function showPage(page) { ['dashboard','history','stats','settings'].forEach(p => document.getElementById(`${p}-page`).classList.toggle('active', p===page)); ['home','history','stats','settings'].forEach(id => { const map = {home:'dashboard',history:'history',stats:'stats',settings:'settings'}; const btn = document.getElementById(`nav-${id}`); if (btn) btn.classList.toggle('active', map[id]===page); }); if (page==='history') renderHistory(); if (page==='stats') renderStats(); if (page==='settings') renderSettings(); }
+function setMonthLabel() { const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; document.getElementById('month-label').textContent = `${months[new Date().getMonth()]} ${new Date().getFullYear()}`; }
+function setSyncStatus(s) { document.getElementById('sync-dot').className = `sync-dot ${s}`; const el = document.getElementById('cfg-sync'); if (el) el.textContent = s==='ok'?'Synced':s==='pending'?'Syncing…':'Error'; }
 function openModal() { document.getElementById('tx-date').value = today(); document.getElementById('modal-overlay').classList.add('open'); setTimeout(()=>document.getElementById('tx-amount').focus(), 300); }
 function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); document.getElementById('tx-amount').value=''; document.getElementById('tx-desc').value=''; document.getElementById('tx-date').value = today(); }
 function closeModalOutside(e, id) { if (e.target===document.getElementById(id)) { if(id === 'modal-overlay') closeModal(); else closeEditModal(); } }
