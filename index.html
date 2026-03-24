@@ -650,11 +650,9 @@ async function handleExcelUpload(event) {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
       
-      // Assume the first sheet is the one containing the transactions
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
       
-      // Convert to a simple 2D array, ensuring dates stay formatted as strings
       const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
       
       const newTxs = parseExcelData(rows);
@@ -708,14 +706,12 @@ async function handleExcelUpload(event) {
     }
   };
   
-  // Read file as ArrayBuffer for SheetJS
   reader.readAsArrayBuffer(file);
 }
 
 function parseExcelData(rows) {
   let startIndex = -1;
 
-  // Find where the table data begins by looking for Israeli credit card headers
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     if (row && row.length > 1 && String(row[0]).includes('תאריך רכישה') && String(row[1]).includes('שם בית עסק')) {
@@ -730,25 +726,20 @@ function parseExcelData(rows) {
   for (let i = startIndex; i < rows.length; i++) {
     const row = rows[i];
     
-    // Stop at the totals summary line or empty lines
     if (!row || !row.length || !row[0] || String(row[0]).includes('סה"כ')) continue;
 
-    const datePart = String(row[0]).trim(); // e.g. 08.02.26
+    const datePart = String(row[0]).trim(); 
     if (!/^\d{2}\.\d{2}\.\d{2}$/.test(datePart)) continue;
 
-    // Convert DD.MM.YY to YYYY-MM-DD
     const [dd, mm, yy] = datePart.split('.');
     const fullYear = parseInt(yy) > 50 ? `19${yy}` : `20${yy}`;
     const isoDate = `${fullYear}-${mm}-${dd}`;
 
     const desc = String(row[1] || '').trim();
     
-    // Index 4 is usually "סכום חיוב" (Billed Amount). 
-    // We clean it up in case the Excel library parsed it as a string with currency symbols.
     let amountStr = String(row[4] || '0').replace(/[^\d.-]/g, '');
     const amount = parseFloat(amountStr); 
 
-    // Skip zero charges 
     if (isNaN(amount) || amount <= 0) continue;
 
     results.push({
@@ -772,8 +763,106 @@ function guessCategory(desc) {
   if (/עירית|חשמל|מים|ארנונה/i.test(desc)) return 'Rent';
   return 'Other'; 
 }
+
 // ══════════════════════════════════════
-// RENDER STATS (Adds Timeframe Filter)
+// RENDER DASHBOARD
+// ══════════════════════════════════════
+function currentMonthTxs() {
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  return transactions.filter(t => t.date.startsWith(ym));
+}
+
+function renderDashboard() {
+  const txs = currentMonthTxs();
+  const recurring = getRecurring();
+  const expenses = transactions.filter(t=>t.type==='expense');
+  
+  const totalSavings = getTotalSavings();
+  const totalSpentEver = expenses.reduce((s,t)=>s+t.amount,0);
+  const recurringTotal = recurring.reduce((s,r)=>s+r.amount,0);
+  
+  const savingsLeft = totalSavings - totalSpentEver;
+
+  const txSpent = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const monthSpent = txSpent + recurringTotal;
+
+  document.getElementById('m-savings').textContent = `₪ ${Math.round(savingsLeft).toLocaleString()}`;
+  document.getElementById('m-spent').textContent = `₪ ${Math.round(monthSpent).toLocaleString()}`;
+  const leftEl = document.getElementById('m-left');
+  leftEl.textContent = `₪ ${Math.round(Math.abs(savingsLeft)).toLocaleString()}`;
+  leftEl.className = `metric-value ${savingsLeft < 0 ? 'danger' : ''}`;
+
+  // Survival Calculation Fix: Based on true average monthly spend
+  const uniqueMonths = new Set(expenses.map(t => t.date.substring(0, 7)));
+  const monthsCount = Math.max(1, uniqueMonths.size);
+  const avgMonthlyBurn = (totalSpentEver / monthsCount) + recurringTotal;
+  
+  const monthsUntilBroke = avgMonthlyBurn > 0 ? (savingsLeft / avgMonthlyBurn) : 999;
+
+  const banner = document.getElementById('survival-banner');
+  const daysEl = document.getElementById('survival-days');
+
+  if (savingsLeft <= 0) {
+    banner.className = 'survival';
+    document.getElementById('survival-label').textContent = 'Savings depleted';
+    document.getElementById('survival-sub').textContent = "You've spent all your savings";
+    daysEl.innerHTML = `0<span>days</span>`;
+  } else if (monthsUntilBroke > 12) {
+    banner.className = 'survival safe';
+    document.getElementById('survival-label').textContent = 'Savings runway';
+    document.getElementById('survival-sub').textContent = 'Based on avg monthly spend';
+    daysEl.innerHTML = `${Math.round(monthsUntilBroke)}<span>mo</span>`;
+  } else if (monthsUntilBroke > 2) {
+    banner.className = 'survival warn';
+    document.getElementById('survival-label').textContent = 'Savings runway';
+    document.getElementById('survival-sub').textContent = 'Running lower than ideal';
+    daysEl.innerHTML = `${Math.round(monthsUntilBroke)}<span>mo</span>`;
+  } else {
+    banner.className = 'survival';
+    document.getElementById('survival-label').textContent = 'Low savings';
+    document.getElementById('survival-sub').textContent = 'Based on avg monthly spend';
+    daysEl.innerHTML = `${Math.round(monthsUntilBroke * 30)}<span>days</span>`;
+  }
+
+  // Category bars
+  const cats = {};
+  txs.filter(t=>t.type==='expense').forEach(t => { cats[t.cat]=(cats[t.cat]||0)+t.amount; });
+  recurring.forEach(r => { cats[r.cat]=(cats[r.cat]||0)+r.amount; });
+  const sorted = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('cat-list').innerHTML = sorted.length === 0
+    ? '<div class="empty">No expenses this month</div>'
+    : sorted.map(([cat,amt]) => {
+        const pct = monthSpent > 0 ? Math.round(amt/monthSpent*100) : 0;
+        return `<div><div class="cat-row"><span class="cat-name">${cat}</span><span class="cat-amount">₪ ${Math.round(amt).toLocaleString()} · ${pct}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${CAT_COLORS[cat]||'#888'}"></div></div></div>`;
+      }).join('');
+
+  const recurringAsTx = recurring.map(r => ({...r, date:'monthly', type:'expense', recurring:true}));
+  renderTxList(document.getElementById('tx-list'), [...recurringAsTx, ...transactions.slice(0,5)]);
+}
+
+// ══════════════════════════════════════
+// RENDER HISTORY
+// ══════════════════════════════════════
+function renderHistory() {
+  renderTxList(document.getElementById('tx-all-list'), transactions);
+}
+
+function renderTxList(el, txs) {
+  el.innerHTML = txs.length === 0
+    ? '<div class="empty">No transactions yet</div>'
+    : txs.map(t => `
+      <div class="tx-item">
+        <div class="tx-left">
+          <div class="tx-name">${t.desc}${t.recurring?'<span class="badge badge-recurring">↻ monthly</span>':''}</div>
+          <div class="tx-meta">${t.cat} · ${t.date}</div>
+        </div>
+        <div class="tx-amount ${t.type}">${t.type==='expense'?'−':'+'} ₪ ${Math.round(t.amount).toLocaleString()}</div>
+      </div>`).join('');
+}
+
+// ══════════════════════════════════════
+// RENDER STATS (Includes Timeframe Filter)
 // ══════════════════════════════════════
 function renderStats() {
   const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -878,95 +967,11 @@ function renderStats() {
   });
 }
 
-// ══════════════════════════════════════
-// RENDER HISTORY
-// ══════════════════════════════════════
-function renderHistory() {
-  renderTxList(document.getElementById('tx-all-list'), transactions);
-}
-
-function renderTxList(el, txs) {
-  el.innerHTML = txs.length === 0
-    ? '<div class="empty">No transactions yet</div>'
-    : txs.map(t => `
-      <div class="tx-item">
-        <div class="tx-left">
-          <div class="tx-name">${t.desc}${t.recurring?'<span class="badge badge-recurring">↻ monthly</span>':''}</div>
-          <div class="tx-meta">${t.cat} · ${t.date}</div>
-        </div>
-        <div class="tx-amount ${t.type}">${t.type==='expense'?'−':'+'} ₪ ${Math.round(t.amount).toLocaleString()}</div>
-      </div>`).join('');
-}
-
-// ══════════════════════════════════════
-// RENDER DASHBOARD (Fixes Runway Bug)
-// ══════════════════════════════════════
-function renderDashboard() {
-  const txs = currentMonthTxs();
-  const recurring = getRecurring();
-  const expenses = transactions.filter(t=>t.type==='expense');
-  
-  const totalSavings = getTotalSavings();
-  const totalSpentEver = expenses.reduce((s,t)=>s+t.amount,0);
-  const recurringTotal = recurring.reduce((s,r)=>s+r.amount,0);
-  
-  const savingsLeft = totalSavings - totalSpentEver;
-
-  const txSpent = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  const monthSpent = txSpent + recurringTotal;
-
-  document.getElementById('m-savings').textContent = `₪ ${Math.round(savingsLeft).toLocaleString()}`;
-  document.getElementById('m-spent').textContent = `₪ ${Math.round(monthSpent).toLocaleString()}`;
-  const leftEl = document.getElementById('m-left');
-  leftEl.textContent = `₪ ${Math.round(Math.abs(savingsLeft)).toLocaleString()}`;
-  leftEl.className = `metric-value ${savingsLeft < 0 ? 'danger' : ''}`;
-
-  // Survival Calculation Fix: Based on true average monthly spend
-  const uniqueMonths = new Set(expenses.map(t => t.date.substring(0, 7)));
-  const monthsCount = Math.max(1, uniqueMonths.size);
-  const avgMonthlyBurn = (totalSpentEver / monthsCount) + recurringTotal;
-  
-  const monthsUntilBroke = avgMonthlyBurn > 0 ? (savingsLeft / avgMonthlyBurn) : 999;
-
-  const banner = document.getElementById('survival-banner');
-  const daysEl = document.getElementById('survival-days');
-
-  if (savingsLeft <= 0) {
-    banner.className = 'survival';
-    document.getElementById('survival-label').textContent = 'Savings depleted';
-    document.getElementById('survival-sub').textContent = "You've spent all your savings";
-    daysEl.innerHTML = `0<span>days</span>`;
-  } else if (monthsUntilBroke > 12) {
-    banner.className = 'survival safe';
-    document.getElementById('survival-label').textContent = 'Savings runway';
-    document.getElementById('survival-sub').textContent = 'Based on avg monthly spend';
-    daysEl.innerHTML = `${Math.round(monthsUntilBroke)}<span>mo</span>`;
-  } else if (monthsUntilBroke > 2) {
-    banner.className = 'survival warn';
-    document.getElementById('survival-label').textContent = 'Savings runway';
-    document.getElementById('survival-sub').textContent = 'Running lower than ideal';
-    daysEl.innerHTML = `${Math.round(monthsUntilBroke)}<span>mo</span>`;
-  } else {
-    banner.className = 'survival';
-    document.getElementById('survival-label').textContent = 'Low savings';
-    document.getElementById('survival-sub').textContent = 'Based on avg monthly spend';
-    daysEl.innerHTML = `${Math.round(monthsUntilBroke * 30)}<span>days</span>`;
-  }
-
-  // Category bars
-  const cats = {};
-  txs.filter(t=>t.type==='expense').forEach(t => { cats[t.cat]=(cats[t.cat]||0)+t.amount; });
-  recurring.forEach(r => { cats[r.cat]=(cats[r.cat]||0)+r.amount; });
-  const sorted = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
-  document.getElementById('cat-list').innerHTML = sorted.length === 0
-    ? '<div class="empty">No expenses this month</div>'
-    : sorted.map(([cat,amt]) => {
-        const pct = monthSpent > 0 ? Math.round(amt/monthSpent*100) : 0;
-        return `<div><div class="cat-row"><span class="cat-name">${cat}</span><span class="cat-amount">₪ ${Math.round(amt).toLocaleString()} · ${pct}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${CAT_COLORS[cat]||'#888'}"></div></div></div>`;
-      }).join('');
-
-  const recurringAsTx = recurring.map(r => ({...r, date:'monthly', type:'expense', recurring:true}));
-  renderTxList(document.getElementById('tx-list'), [...recurringAsTx, ...transactions.slice(0,5)]);
+function largestExpense(txs) {
+  const expenses = txs.filter(t=>t.type==='expense');
+  if (!expenses.length) return '–';
+  const top = expenses.reduce((a,b) => a.amount > b.amount ? a : b);
+  return `${top.desc} (₪${Math.round(top.amount).toLocaleString()})`;
 }
 
 // ══════════════════════════════════════
