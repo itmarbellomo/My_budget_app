@@ -76,6 +76,8 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .cat-amount { font-family: var(--mono); font-size: 12px; color: var(--muted); }
 .bar-track { height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
 .bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+.cat-item-wrap { cursor: pointer; transition: opacity 0.2s; }
+.cat-item-wrap:hover { opacity: 0.7; }
 
 /* TRANSACTIONS */
 .tx-list { display: flex; flex-direction: column; gap: 1px; }
@@ -93,6 +95,9 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .tx-amount.income { color: var(--success); }
 .tx-refund-note { font-size: 9px; color: var(--success); font-family: var(--mono); margin-top: 2px; opacity: 0.9; }
 .empty { text-align: center; padding: 40px 20px; color: var(--dim); font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; }
+
+/* MONTH HEADER (HISTORY) */
+.month-header { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--dim); text-transform: uppercase; padding: 16px 16px 8px; background: var(--bg); position: sticky; top: 0; z-index: 10; }
 
 /* BADGES */
 .badge { font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; border-radius: 4px; padding: 2px 6px; text-transform: uppercase; flex-shrink: 0; }
@@ -281,22 +286,31 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   <div class="header">
     <div class="header-top">
       <div class="app-title">All transactions</div>
-      <select id="history-cat-filter" class="form-select" style="width: auto; padding: 4px 12px; font-size: 11px; height: 32px; border-radius: 50px;" onchange="renderHistory()">
-        <option value="all">All Categories</option>
-        <option value="Food">Food</option>
-        <option value="Rent">Rent</option>
-        <option value="Transport">Transport</option>
-        <option value="Entertainment">Entertainment</option>
-        <option value="Health">Health</option>
-        <option value="Education">Education</option>
-        <option value="Clothing">Clothing</option>
-        <option value="Other">Other</option>
-        <option value="Income">Income</option>
-      </select>
+      <div style="display:flex; gap:8px;">
+        <select id="history-timeframe" class="form-select" style="width: auto; padding: 4px 12px; font-size: 11px; height: 32px; border-radius: 50px;" onchange="historyExactMonth=null; renderHistory()">
+          <option value="1">This Month</option>
+          <option value="3">Last 3 Months</option>
+          <option value="6">Last 6 Months</option>
+          <option value="all" selected>All Time</option>
+        </select>
+        <select id="history-cat-filter" class="form-select" style="width: auto; padding: 4px 12px; font-size: 11px; height: 32px; border-radius: 50px;" onchange="historyExactMonth=null; renderHistory()">
+          <option value="all">All Categories</option>
+          <option value="Food">Food</option>
+          <option value="Rent">Rent</option>
+          <option value="Transport">Transport</option>
+          <option value="Entertainment">Entertainment</option>
+          <option value="Health">Health</option>
+          <option value="Education">Education</option>
+          <option value="Clothing">Clothing</option>
+          <option value="Bit">Bit</option>
+          <option value="Other">Other</option>
+          <option value="Income">Income</option>
+        </select>
+      </div>
     </div>
   </div>
-  <div class="section">
-    <div class="tx-list" id="tx-all-list"></div>
+  <div class="section" style="padding: 0;">
+    <div class="tx-list" id="tx-all-list" style="padding: 0 24px 24px;"></div>
   </div>
 </div>
 
@@ -321,14 +335,15 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
     </div>
 
     <div class="chart-card">
-      <div class="chart-title">Category breakdown</div>
-      <div style="max-width:220px;margin:0 auto;">
+      <div class="chart-title" style="margin-bottom: 4px;">Category breakdown</div>
+      <div style="font-size: 10px; color: var(--muted); margin-bottom: 16px;">(Click slice to see history)</div>
+      <div style="max-width:220px;margin:0 auto; cursor:pointer;">
         <canvas id="chart-donut" height="220"></canvas>
       </div>
     </div>
 
     <div class="chart-card">
-      <div class="chart-title">
+      <div class="chart-title" style="margin-bottom: 4px;">
         <span>Month vs month</span>
         <select id="stats-cat-filter" class="form-select" style="width: auto; padding: 2px 8px; font-size: 10px; height: 24px; border-radius: 4px; margin-left:10px;" onchange="renderStats()">
           <option value="all">All Categories</option>
@@ -339,10 +354,12 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
           <option value="Health">Health</option>
           <option value="Education">Education</option>
           <option value="Clothing">Clothing</option>
+          <option value="Bit">Bit</option>
           <option value="Other">Other</option>
         </select>
       </div>
-      <canvas id="chart-bar" height="200"></canvas>
+      <div style="font-size: 10px; color: var(--muted); margin-bottom: 16px;">(Click bar to see history)</div>
+      <canvas id="chart-bar" height="200" style="cursor:pointer;"></canvas>
     </div>
   </div>
 </div>
@@ -382,7 +399,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
       <select class="form-select" id="rec-cat">
         <option>Rent</option><option>Food</option><option>Transport</option>
         <option>Entertainment</option><option>Health</option><option>Education</option>
-        <option>Clothing</option><option>Other</option>
+        <option>Clothing</option><option>Bit</option><option>Other</option>
       </select>
     </div>
     <button class="submit-btn" onclick="addRecurring()" style="margin-bottom:24px;">+ Add recurring</button>
@@ -398,7 +415,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
     Home
   </button>
-  <button class="nav-btn" id="nav-history" onclick="showPage('history')">
+  <button class="nav-btn" id="nav-history" onclick="historyExactMonth=null; showPage('history')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
     History
   </button>
@@ -434,7 +451,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
       <select class="form-select" id="tx-cat">
         <option>Food</option><option>Rent</option><option>Transport</option>
         <option>Entertainment</option><option>Health</option><option>Education</option>
-        <option>Clothing</option><option>Other</option>
+        <option>Clothing</option><option>Bit</option><option>Other</option>
       </select>
     </div>
     <div class="form-group">
@@ -465,6 +482,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
         <option value="Health">Health</option>
         <option value="Education">Education</option>
         <option value="Clothing">Clothing</option>
+        <option value="Bit">Bit</option>
         <option value="Other">Other</option>
         <option value="Income">Income</option>
       </select>
@@ -509,12 +527,13 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 const CAT_COLORS = {
   Food:'#4caf50', Rent:'#2196f3', Transport:'#ff9800',
   Entertainment:'#e91e63', Health:'#00bcd4', Education:'#9c27b0',
-  Clothing:'#ff5722', Income:'#4caf50', Other:'#9e9e9e'
+  Clothing:'#ff5722', Bit:'#3f51b5', Income:'#4caf50', Other:'#9e9e9e'
 };
 let config = {}, transactions = [], currentType = 'expense';
 let accessToken = null, tokenExpiry = 0, googleUser = null;
 let chartLine = null, chartDonut = null, chartBar = null;
 let editingTxId = null;
+let historyExactMonth = null; // Internal state for exact month filtering
 
 function cfg(k) { return config[k] || ''; }
 function getRecurring() { return config.recurring || []; }
@@ -630,6 +649,20 @@ async function ensureFreshToken() {
 }
 
 // ══════════════════════════════════════
+// NAVIGATION (Go to History internally)
+// ══════════════════════════════════════
+function goToHistory(cat, tf, exactMonth = null) {
+  historyExactMonth = exactMonth;
+  const catFilter = document.getElementById('history-cat-filter');
+  if (catFilter) catFilter.value = cat || 'all';
+  
+  const tfFilter = document.getElementById('history-timeframe');
+  if (tfFilter) tfFilter.value = tf || 'all';
+  
+  showPage('history');
+}
+
+// ══════════════════════════════════════
 // SHEETS API
 // ══════════════════════════════════════
 const SHEET = 'Transactions';
@@ -662,7 +695,6 @@ async function syncFromSheet() {
   setSyncStatus('pending');
   try {
     await ensureSheet();
-    // Fetch columns A:G to include Refund and Original Amount
     const data = await sheetsReq('GET', `/values/${SHEET}!A:G`);
     transactions = (data.values || []).slice(1).map(r => ({
       id: generateId(),
@@ -686,14 +718,12 @@ async function syncFromSheet() {
 }
 
 async function appendRow(tx) {
-  // Push 7 columns to Google Sheet
   await sheetsReq('POST', `/values/${SHEET}!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
     values: [[tx.date, tx.desc, tx.amount, tx.cat, tx.type, tx.refund || 0, tx.original || tx.amount]]
   });
 }
 
 async function rewriteAllRowsToSheet() {
-  // Clears the sheet and rewrites all transactions. Safest way to handle random row edits.
   const values = [['Date','Description','Net Amount','Category','Type','Refund','Original Amount'], ...transactions.map(t => [t.date, t.desc, t.amount, t.cat, t.type, t.refund || 0, t.original || t.amount])];
   await sheetsReq('POST', `/values/${SHEET}!A:G:clear`, {});
   await sheetsReq('PUT', `/values/${SHEET}!A1:G?valueInputOption=RAW`, { values });
@@ -712,7 +742,6 @@ async function submitTransaction() {
   const btn = document.getElementById('submit-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   
-  // Set original and refund explicitly for new transactions
   const tx = { id: generateId(), date, desc, amount, cat, type: currentType, refund: 0, original: amount };
   try {
     await appendRow(tx);
@@ -732,7 +761,6 @@ function openEditModal(id) {
   
   editingTxId = id;
   
-  // Pre-fill editable fields
   document.getElementById('edit-desc').value = tx.desc;
   document.getElementById('edit-cat').value = tx.cat;
 
@@ -771,15 +799,12 @@ async function submitEdit() {
   btn.disabled = true; btn.textContent = 'Saving...';
 
   try {
-    // Update core details
     tx.desc = newDesc;
     tx.cat = newCat;
     
-    // Auto adjust type based on category
     if (newCat === 'Income') tx.type = 'income';
     else tx.type = 'expense';
 
-    // Process refund logic if the user typed something into the Bit Refund field
     if (receivedAmount > 0) {
       if (!tx.original) tx.original = tx.amount;
       tx.refund = (tx.refund || 0) + receivedAmount;
@@ -787,8 +812,6 @@ async function submitEdit() {
     }
     
     localStorage.setItem('budget_txs', JSON.stringify(transactions));
-
-    // Push new full state to google sheets
     await rewriteAllRowsToSheet();
     
     closeEditModal();
@@ -844,7 +867,6 @@ async function handleExcelUpload(event) {
       }
 
       btn.textContent = `Importing ${toAdd.length} items...`;
-      // Push 7 columns
       const values = toAdd.map(tx => [tx.date, tx.desc, tx.amount, tx.cat, tx.type, tx.refund, tx.original]);
       await sheetsReq('POST', `/values/${SHEET}!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, { values: values });
 
@@ -903,6 +925,7 @@ function parseExcelData(rows) {
 }
 
 function guessCategory(desc) {
+  if (/העברה בBIT/i.test(desc)) return 'Bit';
   if (/שופרסל|מאפה|קפה|רודיס|מאפיית|פיצוחי|סופר|מכולת|מסעדה/i.test(desc)) return 'Food';
   if (/רב-פס|פנגו|מוביט|דלק|תחבורה|רכבת|אוטובוס/i.test(desc)) return 'Transport';
   if (/מכבידנט|סופר פארם|בית מרקחת/i.test(desc)) return 'Health';
@@ -932,13 +955,11 @@ function renderDashboard() {
   
   const savingsLeft = totalSavings - totalSpentEver;
 
-  // Calculate Average Monthly Burn globally for accurate "Time until broke" 
   const uniqueMonths = new Set(expenses.map(t => t.date.substring(0, 7)));
   const monthsCount = Math.max(1, uniqueMonths.size);
   const avgMonthlyBurn = (totalSpentEver / monthsCount) + recurringTotal;
   const monthsUntilBroke = avgMonthlyBurn > 0 ? (savingsLeft / avgMonthlyBurn) : 999;
 
-  // Calculate stats specifically for the selected timeframe
   const uniqueFilteredMonths = new Set(txs.map(t => t.date.substring(0, 7))).size;
   const monthsInRange = Math.max(1, tf === 'all' ? uniqueFilteredMonths : parseInt(tf));
 
@@ -977,7 +998,11 @@ function renderDashboard() {
     ? '<div class="empty">No expenses for this period</div>'
     : sorted.map(([cat,amt]) => {
         const pct = periodSpent > 0 ? Math.round(amt/periodSpent*100) : 0;
-        return `<div><div class="cat-row"><span class="cat-name">${cat}</span><span class="cat-amount">₪ ${amt.toFixed(2)} · ${pct}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${CAT_COLORS[cat]||'#888'}"></div></div></div>`;
+        return `
+        <div class="cat-item-wrap" onclick="goToHistory('${cat}', 'all')">
+          <div class="cat-row"><span class="cat-name">${cat}</span><span class="cat-amount">₪ ${amt.toFixed(2)} · ${pct}%</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${CAT_COLORS[cat]||'#888'}"></div></div>
+        </div>`;
       }).join('');
 
   const recurringAsTx = recurring.map(r => ({...r, date:'monthly', type:'expense', recurring:true}));
@@ -985,23 +1010,74 @@ function renderDashboard() {
 }
 
 // ══════════════════════════════════════
-// RENDER HISTORY
+// RENDER HISTORY (With Month Headers)
 // ══════════════════════════════════════
 function renderHistory() {
   const catFilter = document.getElementById('history-cat-filter')?.value || 'all';
+  const tfFilter = document.getElementById('history-timeframe')?.value || 'all';
   let filteredTxs = transactions;
+
+  // Exact Month Filter (triggered from Stats bar chart clicks)
+  if (historyExactMonth) {
+    filteredTxs = filteredTxs.filter(t => t.date.startsWith(historyExactMonth));
+  } else if (tfFilter !== 'all') {
+    // Normal timeframe filter
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth() - parseInt(tfFilter) + 1, 1);
+    filteredTxs = filteredTxs.filter(t => new Date(t.date) >= startDate);
+  }
 
   if (catFilter !== 'all') {
     if (catFilter === 'Income') {
-      filteredTxs = transactions.filter(t => t.type === 'income');
+      filteredTxs = filteredTxs.filter(t => t.type === 'income');
     } else {
-      filteredTxs = transactions.filter(t => t.cat === catFilter && t.type === 'expense');
+      filteredTxs = filteredTxs.filter(t => t.cat === catFilter && t.type === 'expense');
     }
   }
 
-  renderTxList(document.getElementById('tx-all-list'), filteredTxs);
+  const el = document.getElementById('tx-all-list');
+  if (filteredTxs.length === 0) {
+    el.innerHTML = '<div class="empty" style="padding-top:40px;">No transactions found</div>';
+    return;
+  }
+
+  // Group by month
+  const grouped = {};
+  filteredTxs.forEach(t => {
+    const month = t.date.substring(0, 7);
+    if (!grouped[month]) grouped[month] = [];
+    grouped[month].push(t);
+  });
+
+  const sortedMonths = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+  let html = '';
+
+  sortedMonths.forEach(m => {
+    const [yy, mm] = m.split('-');
+    const dateObj = new Date(yy, mm - 1);
+    const monthName = dateObj.toLocaleString('default', { month: 'long', year: 'numeric' });
+    
+    html += `<div class="month-header">${monthName}</div>`;
+    html += grouped[m].map(t => {
+      const refundHTML = t.refund && t.refund > 0 ? `<div class="tx-refund-note">(₪${t.original.toFixed(2)} - ₪${t.refund.toFixed(2)})</div>` : '';
+      return `
+      <div class="tx-item ${!t.recurring ? 'clickable' : ''}" ${!t.recurring ? `onclick="openEditModal('${t.id}')"` : ''}>
+        <div class="tx-left">
+          <div class="tx-name">${t.desc}${t.recurring?'<span class="badge badge-recurring">↻ monthly</span>':''}</div>
+          <div class="tx-meta">${t.cat} · ${t.date}</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="tx-amount ${t.type}">${t.type==='expense'?'−':'+'} ₪ ${t.amount.toFixed(2)}</div>
+          ${refundHTML}
+        </div>
+      </div>`
+    }).join('');
+  });
+
+  el.innerHTML = html;
 }
 
+// (Helper for Dashboard)
 function renderTxList(el, txs) {
   el.innerHTML = txs.length === 0
     ? '<div class="empty">No transactions yet</div>'
@@ -1083,10 +1159,20 @@ function renderStats() {
   chartDonut = new Chart(document.getElementById('chart-donut'), {
     type: 'doughnut',
     data: { labels: catEntries.map(([c])=>c), datasets: [{ data: catEntries.map(([,v])=>Math.round(v)), backgroundColor: catEntries.map(([c])=>CAT_COLORS[c]||'#9e9e9e'), borderWidth: 0, hoverOffset: 6 }] },
-    options: { cutout: '62%', plugins: { legend: { position: 'bottom', labels: { padding: 14, font: { family: "'DM Mono'" }, boxWidth: 12 } } } }
+    options: { 
+      cutout: '62%', 
+      plugins: { legend: { position: 'bottom', labels: { padding: 14, font: { family: "'DM Mono'" }, boxWidth: 12 } } },
+      onClick: (e, elements) => {
+        if (elements.length > 0) {
+          const idx = elements[0].index;
+          const cat = chartDonut.data.labels[idx];
+          const currentTf = document.getElementById('stats-timeframe').value;
+          goToHistory(cat, currentTf);
+        }
+      }
+    }
   });
 
-  // Stacked Bar Chart Logic
   const catFilter = document.getElementById('stats-cat-filter').value;
   const barMonths = [];
   const barDatasets = [];
@@ -1114,7 +1200,7 @@ function renderStats() {
         label: cat,
         data: dataPoints,
         backgroundColor: CAT_COLORS[cat] || '#9e9e9e',
-        borderRadius: catFilter === 'all' ? 0 : 6 // round corners only if not stacked
+        borderRadius: catFilter === 'all' ? 0 : 6 
       });
     }
   });
@@ -1128,16 +1214,26 @@ function renderStats() {
       scales: { 
         x: { stacked: catFilter === 'all', grid: { display: false } }, 
         y: { stacked: catFilter === 'all', grid: { color: gridColor }, ticks: { callback: v => `₪${v.toLocaleString()}` } } 
-      } 
+      },
+      onClick: (e, elements) => {
+        if (elements.length > 0) {
+          const el = elements[0];
+          const cat = chartBar.data.datasets[el.datasetIndex].label;
+          const monthPrefix = barMonths[el.index].prefix;
+          // Jump to History, filtered by exact month prefix mapping to the bar
+          goToHistory(cat, 'all', monthPrefix); 
+        }
+      }
     }
   });
 }
 
+// Ensure it utilizes the NET amount logic rather than Original.
 function largestExpense(txs) {
   const expenses = txs.filter(t=>t.type==='expense');
   if (!expenses.length) return '–';
-  const top = expenses.reduce((a,b) => (a.original || a.amount) > (b.original || b.amount) ? a : b);
-  return `${top.desc} (₪${(top.original || top.amount).toFixed(2)})`;
+  const top = expenses.reduce((a,b) => a.amount > b.amount ? a : b);
+  return `${top.desc} (₪${top.amount.toFixed(2)})`;
 }
 
 // ══════════════════════════════════════
