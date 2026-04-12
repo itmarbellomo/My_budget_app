@@ -528,7 +528,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 // STATE
 // ══════════════════════════════════════
 const CAT_COLORS = {
-  Food:'#4caf50',Groceries:'#FFFA00', Rent:'#2196f3', Transport:'#ff9800',
+  Food:'#4caf50',Groceries:'#E2DD00', Rent:'#2196f3', Transport:'#ff9800',
   Entertainment:'#e91e63', Health:'#00bcd4', Education:'#9c27b0',
   Clothing:'#ff5722', Bit:'#3f51b5', Income:'#4caf50', Other:'#9e9e9e'
 };
@@ -928,8 +928,9 @@ function parseExcelData(rows) {
 }
 
 function guessCategory(desc) {
-  if (/העברה בBIT/i.test(desc)) return 'Bit';
-  if (/שופרסל|מאפה|קפה|רודיס|מאפיית|פיצוחי|סופר|מכולת|מסעדה/i.test(desc)) return 'Food';
+  if (/BIT/i.test(desc)) return 'Bit';
+  if (/מאפה|קפה|פיצוחי|מסעדה/i.test(desc)) return 'Food';
+  if (/שופרסל|רודיס|מאפיית|סופר|מכולת/i.test(desc)) return 'Groceries';
   if (/רב-פס|פנגו|מוביט|דלק|תחבורה|רכבת|אוטובוס/i.test(desc)) return 'Transport';
   if (/מכבידנט|סופר פארם|בית מרקחת/i.test(desc)) return 'Health';
   if (/מכלול|אוניברסיט|דיונון|קרביץ/i.test(desc)) return 'Education';
