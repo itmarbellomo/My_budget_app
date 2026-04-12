@@ -296,6 +296,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
         <select id="history-cat-filter" class="form-select" style="width: auto; padding: 4px 12px; font-size: 11px; height: 32px; border-radius: 50px;" onchange="historyExactMonth=null; renderHistory()">
           <option value="all">All Categories</option>
           <option value="Food">Food</option>
+          <option value="Groceries">Groceries</option>
           <option value="Rent">Rent</option>
           <option value="Transport">Transport</option>
           <option value="Entertainment">Entertainment</option>
@@ -348,6 +349,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
         <select id="stats-cat-filter" class="form-select" style="width: auto; padding: 2px 8px; font-size: 10px; height: 24px; border-radius: 4px; margin-left:10px;" onchange="renderStats()">
           <option value="all">All Categories</option>
           <option value="Food">Food</option>
+          <option value="Groceries">Groceries</option>
           <option value="Rent">Rent</option>
           <option value="Transport">Transport</option>
           <option value="Entertainment">Entertainment</option>
@@ -397,7 +399,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
     </div>
     <div class="form-group">
       <select class="form-select" id="rec-cat">
-        <option>Rent</option><option>Food</option><option>Transport</option>
+        <option>Rent</option><option>Food</option><option>Groceries</option><option>Transport</option>
         <option>Entertainment</option><option>Health</option><option>Education</option>
         <option>Clothing</option><option>Bit</option><option>Other</option>
       </select>
@@ -449,7 +451,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
     <div class="form-group">
       <label class="form-label">Category</label>
       <select class="form-select" id="tx-cat">
-        <option>Food</option><option>Rent</option><option>Transport</option>
+        <option>Food</option><option>Groceries</option><option>Rent</option><option>Transport</option>
         <option>Entertainment</option><option>Health</option><option>Education</option>
         <option>Clothing</option><option>Bit</option><option>Other</option>
       </select>
@@ -476,6 +478,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
       <label class="form-label">Category</label>
       <select class="form-select" id="edit-cat">
         <option value="Food">Food</option>
+        <option value="Groceries">Groceries</option>
         <option value="Rent">Rent</option>
         <option value="Transport">Transport</option>
         <option value="Entertainment">Entertainment</option>
@@ -525,7 +528,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 // STATE
 // ══════════════════════════════════════
 const CAT_COLORS = {
-  Food:'#4caf50', Rent:'#2196f3', Transport:'#ff9800',
+  Food:'#4caf50',Groceries:'#FFFA00', Rent:'#2196f3', Transport:'#ff9800',
   Entertainment:'#e91e63', Health:'#00bcd4', Education:'#9c27b0',
   Clothing:'#ff5722', Bit:'#3f51b5', Income:'#4caf50', Other:'#9e9e9e'
 };
